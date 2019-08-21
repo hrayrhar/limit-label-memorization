@@ -1,5 +1,5 @@
 from torch.utils.data import DataLoader
-from methods import net
+from methods import net, vae
 from collections import defaultdict
 from tqdm import tqdm
 import torch
@@ -64,6 +64,8 @@ def load(path, device=None):
         args['device'] = device
     if args['class'] == 'NN':
         model = net.NN(**args)
+    if args['class'] == 'VAE':
+        model = vae.VAE(**args)
     else:
         raise ValueError('Unknown method class!')
     model.load_state_dict(saved_dict['model'])
@@ -95,3 +97,19 @@ def apply_on_dataset(model, dataset, batch_size=256, cpu=True, description="",
         assert len(outputs[k]) == n_examples
 
     return outputs
+
+
+def decode(model, z, to_cpu=True, batch_size=256, show_progress=False):
+    """ Decode latent factors to recover inputs. """
+    model.eval()
+    with torch.no_grad():
+        x = []
+        for i in tqdm(range(0, len(z), batch_size), disable=not show_progress):
+            z_batch = to_tensor(z[i:i + batch_size], model.device)
+            cur_x = model.decoder(z_batch)
+            if model.device != 'cpu' and to_cpu:
+                cur_x = cur_x.cpu()
+            x.append(cur_x)
+    x = torch.cat(x, dim=0)
+    assert x.shape[0] == len(z)
+    return x

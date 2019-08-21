@@ -1,4 +1,4 @@
-from methods.net import NN
+from methods.vae import VAE
 from modules import training
 import modules.data as datasets
 import modules.visualization as vis
@@ -18,14 +18,13 @@ def main():
     parser.add_argument('--log_dir', '-l', type=str, default=None)
     parser.add_argument('--dataset', '-D', type=str, default='mnist',
                         choices=['mnist'])
-    parser.add_argument('--noise_level', '-n', type=float, default=0.0)
     args = parser.parse_args()
     print(args)
 
     # Load data
     if args.dataset == 'mnist':
         train_loader, val_loader, test_loader = datasets.load_mnist_loaders(batch_size=args.batch_size,
-                                                                            noise_level=args.noise_level)
+                                                                            noise_level=0)
 
     example_shape = train_loader.dataset[0][0].shape
     print("Dataset is loaded:\n\ttrain_samples: {}\n\tval_samples: {}\n\t"
@@ -35,14 +34,6 @@ def main():
 
     # Options
     optimization_args = {
-        # 'optimizer': {
-        #     'name': 'sgd',
-        #     'lr': 0.01
-        # },
-        # 'scheduler': {  # optional
-        #     'gamma': 0.3,
-        #     'step_size': 15
-        # },
         'optimizer': {
             'name': 'adam',
             'lr': 1e-3
@@ -52,9 +43,9 @@ def main():
     with open(args.config, 'r') as f:
         architecture_args = json.load(f)
 
-    model = NN(input_shape=train_loader.dataset[0][0].shape,
-               architecture_args=architecture_args,
-               device=args.device)
+    model = VAE(input_shape=train_loader.dataset[0][0].shape,
+                architecture_args=architecture_args,
+                device=args.device)
 
     training.train(model=model,
                    train_loader=train_loader,

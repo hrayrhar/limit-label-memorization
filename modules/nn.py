@@ -148,9 +148,7 @@ def parse_feed_forward(args, input_shape):
 # Conditional distributions should return list of parameters.
 # They should have these functions defined:
 # - sample(params)
-# - log_probs(params, z)
 # - mean(params)
-# - log_marginal_probs(params, z)
 # - kl_divergence
 
 class ConditionalGaussian(nn.Module):
@@ -180,16 +178,6 @@ class ConditionalGaussian(nn.Module):
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std)
         return mu + std * eps
-
-    @staticmethod
-    def log_prob(params, z):
-        return ConditionalGaussian.log_marginal_probs(params, z).sum(dim=-1)
-
-    @staticmethod
-    def log_marginal_probs(params, z):
-        mu = params['param:mu']
-        logvar = params['param:logvar']
-        return -0.5 * (np.log(2 * np.pi) + logvar + ((z - mu) ** 2) / torch.exp(logvar))
 
     @staticmethod
     def kl_divergence(params):
@@ -229,14 +217,6 @@ class ConditionalUniform(nn.Module):
         return left + (right - left) * eps
 
     @staticmethod
-    def log_prob(params, z):
-        return ConditionalUniform.log_marginal_probs(params, z).sum(dim=-1)
-
-    @staticmethod
-    def log_marginal_probs(params, z):
-        return -torch.log(params['param:right'] - params['param:left'] + 1e-6)
-
-    @staticmethod
     def kl_divergence(params):
         """ Computes KL(q(z|x) || p(z)) assuming p(z) is U(-1, +1). """
         left = params['param:left']
@@ -264,14 +244,6 @@ class ConditionalDiracDelta(nn.Module):
     @staticmethod
     def sample(params):
         return params['param:mu']
-
-    @staticmethod
-    def log_prob(params, z):
-        return ValueError('You cannot call log_prob for Dirac delta.')
-
-    @staticmethod
-    def log_marginal_probs(params, z):
-        return ValueError('You cannot call log_marginal_probs for Dirac delta.')
 
     @staticmethod
     def kl_divergence(params):
