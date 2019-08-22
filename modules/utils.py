@@ -1,5 +1,5 @@
 from torch.utils.data import DataLoader
-from methods import net, vae
+from methods import classifiers, vae
 from collections import defaultdict
 from tqdm import tqdm
 import torch
@@ -62,8 +62,10 @@ def load(path, device=None):
     args = saved_dict['args']
     if device is not None:
         args['device'] = device
-    if args['class'] == 'NN':
-        model = net.NN(**args)
+    if args['class'] == 'StandardClassifier':
+        model = classifiers.StandardClassifier(**args)
+    if args['class'] == 'RobustClassifier':
+        model = classifiers.RobustClassifier(**args)
     if args['class'] == 'VAE':
         model = vae.VAE(**args)
     else:

@@ -21,17 +21,17 @@ class BaseClassifier(torch.nn.Module):
         tensorboard.add_scalar('metrics/{}_accuracy'.format(partition), accuracy, epoch)
 
 
-class NN(BaseClassifier):
+class StandardClassifier(BaseClassifier):
     """ Class for creating simple neural networks from architecture configs.
     """
     def __init__(self, input_shape, architecture_args, device='cuda', **kwargs):
-        super(NN, self).__init__(**kwargs)
+        super(StandardClassifier, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
             'device': device,
-            'class': 'NN'
+            'class': 'StandardClassifier'
         }
 
         assert len(input_shape) == 3
@@ -77,18 +77,18 @@ class NN(BaseClassifier):
         return batch_losses, info
 
 
-class RobustNN(BaseClassifier):
+class RobustClassifier(BaseClassifier):
     """ Class for creating simple neural networks from architecture configs.
     """
     def __init__(self, input_shape, architecture_args, encoder_path, device='cuda', **kwargs):
-        super(RobustNN, self).__init__(**kwargs)
+        super(RobustClassifier, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
             'encoder_path': encoder_path,
             'device': device,
-            'class': 'RobustNN'
+            'class': 'RobustClassifier'
         }
 
         assert len(input_shape) == 3
@@ -161,4 +161,3 @@ class RobustNN(BaseClassifier):
         }
 
         return batch_losses, info
-
