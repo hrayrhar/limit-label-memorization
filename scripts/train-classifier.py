@@ -1,4 +1,5 @@
-from methods.net import NN
+from methods.net import NN, RobustNN
+from methods.vae import VAE
 from modules import training
 import modules.data as datasets
 import modules.visualization as vis
@@ -19,6 +20,9 @@ def main():
     parser.add_argument('--dataset', '-D', type=str, default='mnist',
                         choices=['mnist'])
     parser.add_argument('--noise_level', '-n', type=float, default=0.0)
+    parser.add_argument('--encoder_path', '-r', type=str, default=None)
+    parser.add_argument('--model_class', '-m', type=str, choices=['NN', 'RobustNN'],
+                        default='NN')
     args = parser.parse_args()
     print(args)
 
@@ -44,9 +48,15 @@ def main():
     with open(args.config, 'r') as f:
         architecture_args = json.load(f)
 
-    model = NN(input_shape=train_loader.dataset[0][0].shape,
-               architecture_args=architecture_args,
-               device=args.device)
+    model_class = NN
+    if args.model_class == 'RobustNN':
+        model_class = RobustNN
+        assert args.encoder_path is not None
+
+    model = model_class(input_shape=train_loader.dataset[0][0].shape,
+                        architecture_args=architecture_args,
+                        encoder_path=args.encoder_path,
+                        device=args.device)
 
     training.train(model=model,
                    train_loader=train_loader,

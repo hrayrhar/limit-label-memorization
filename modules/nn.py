@@ -27,6 +27,8 @@ def add_activation(layers, activation):
         layers.append(nn.Tanh())
     if activation == 'softplus':
         layers.append(nn.Softplus())
+    if activation == 'softmax':
+        layers.append(nn.Softmax(dim=1))
     if activation == 'linear':
         pass
     return layers
@@ -143,6 +145,23 @@ def parse_feed_forward(args, input_shape):
     output_shape = infer_shape(net, input_shape)
     print("output.shape:", output_shape)
     return nn.Sequential(*net), output_shape
+
+
+class GradReplacement(torch.autograd.Function):
+    """ Identity function that gets x and grad_wrt_x and returns x,
+    but when returning gradients, returns the given grad_wrt_x instead
+    of the correct gradient. This class can be used to replace the true
+    gradient with a custom one at any location.
+    """
+    @staticmethod
+    def forward(ctx, pred, grad_wrt_logits):
+        ctx.save_for_backward(grad_wrt_logits)
+        return pred
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        grad_wrt_logits = ctx.saved_tensors[0]
+        return grad_wrt_logits, torch.zeros_like(grad_wrt_logits)
 
 
 # Conditional distributions should return list of parameters.
