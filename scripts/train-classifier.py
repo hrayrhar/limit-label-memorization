@@ -1,4 +1,5 @@
-from methods.classifiers import StandardClassifier, RobustClassifier
+from methods.classifiers import StandardClassifier,\
+    RobustClassifier, PretrainedClassifier
 from modules import training
 import modules.data as datasets
 import modules.visualization as vis
@@ -21,7 +22,7 @@ def main():
     parser.add_argument('--noise_level', '-n', type=float, default=0.0)
     parser.add_argument('--encoder_path', '-r', type=str, default=None)
     parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier',
-                        choices=['StandardClassifier', 'RobustClassifier'])
+                        choices=['StandardClassifier', 'PretrainedClassifier', 'RobustClassifier'])
     args = parser.parse_args()
     print(args)
 
@@ -50,6 +51,9 @@ def main():
     model_class = StandardClassifier
     if args.model_class == 'RobustClassifier':
         model_class = RobustClassifier
+        assert args.encoder_path is not None
+    if args.model_class == 'PretrainedClassifier':
+        model_class = PretrainedClassifier
         assert args.encoder_path is not None
 
     model = model_class(input_shape=train_loader.dataset[0][0].shape,

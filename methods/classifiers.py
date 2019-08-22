@@ -5,8 +5,12 @@ import torch
 
 
 class BaseClassifier(torch.nn.Module):
+    """ Abstract class for classifiers.
+    """
     def __init__(self, **kwargs):
         super(BaseClassifier, self).__init__()
+        # initialize and use later
+        self._accuracy = defaultdict(list)
 
     def on_epoch_start(self, partition, **kwargs):
         self._accuracy[partition] = []
@@ -22,7 +26,7 @@ class BaseClassifier(torch.nn.Module):
 
 
 class StandardClassifier(BaseClassifier):
-    """ Class for creating simple neural networks from architecture configs.
+    """ Class standard neural network classifiers.
     """
     def __init__(self, input_shape, architecture_args, device='cuda', **kwargs):
         super(StandardClassifier, self).__init__(**kwargs)
@@ -38,9 +42,6 @@ class StandardClassifier(BaseClassifier):
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
         self.device = device
-
-        # initialize and use later
-        self._accuracy = defaultdict(list)
 
         # initialize the network
         self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'],
@@ -77,8 +78,78 @@ class StandardClassifier(BaseClassifier):
         return batch_losses, info
 
 
+class PretrainedClassifier(BaseClassifier):
+    """ Class for classifiers where feature extraction part is pretrained
+    in an unsupervised way.
+    """
+    def __init__(self, input_shape, architecture_args, encoder_path, device='cuda', **kwargs):
+        super(PretrainedClassifier, self).__init__(**kwargs)
+
+        self.args = {
+            'input_shape': input_shape,
+            'architecture_args': architecture_args,
+            'encoder_path': encoder_path,
+            'device': device,
+            'class': 'PretrainedClassifier'
+        }
+
+        assert len(input_shape) == 3
+        self.input_shape = [None] + list(input_shape)
+        self.architecture_args = architecture_args
+        self.encoder_path = encoder_path
+        self.device = device
+
+        # initialize the network
+        vae = utils.load(self.encoder_path, self.device)
+        self.encoder = vae.encoder
+        utils.set_requires_grad(self.encoder, False)
+
+        self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['label-predictor'],
+                                                   input_shape=vae.hidden_shape)
+        self.classifier = self.classifier.to(self.device)
+
+        print(self)
+
+    def forward(self, inputs, grad_enabled=False, **kwargs):
+        torch.set_grad_enabled(grad_enabled)
+        x = inputs[0].to(self.device)
+
+        z_params = self.encoder(x)
+        z = self.encoder.mean(z_params)  # TODO: maybe sampling is better?
+
+        # compute classifier predictions
+        pred = self.classifier(z)
+
+        out = {
+            'pred': pred,
+        }
+
+        return out
+
+    def compute_loss(self, inputs, labels, grad_enabled, **kwargs):
+        torch.set_grad_enabled(grad_enabled)
+
+        info = self.forward(inputs=inputs, grad_enabled=grad_enabled)
+        pred = info['pred']
+        y = labels[0].to(self.device)
+
+        # classification loss
+        classifier_loss = torch.nn.functional.cross_entropy(input=pred, target=y)
+
+        batch_losses = {
+            'classifier': classifier_loss,
+        }
+
+        return batch_losses, info
+
+
+# TODO: add parameter controlling loss weights
+# TODO: instead of replacing gradients, maybe we
+#       should linearly interpolate between predicted
+#       and actual gradients
 class RobustClassifier(BaseClassifier):
-    """ Class for creating simple neural networks from architecture configs.
+    """ Class of classifiers where one network predicts the gradients without using
+    the labels.
     """
     def __init__(self, input_shape, architecture_args, encoder_path, device='cuda', **kwargs):
         super(RobustClassifier, self).__init__(**kwargs)
@@ -96,9 +167,6 @@ class RobustClassifier(BaseClassifier):
         self.architecture_args = architecture_args
         self.encoder_path = encoder_path
         self.device = device
-
-        # initialize and use later
-        self._accuracy = defaultdict(list)
 
         # initialize the network
         vae = utils.load(self.encoder_path, self.device)
