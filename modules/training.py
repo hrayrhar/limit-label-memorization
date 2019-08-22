@@ -101,7 +101,6 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
 
     for epoch in range(epochs):
         t0 = time.time()
-        scheduler.step()  # update the learning rate
 
         model.train()
         train_losses = run_partition(model=model, epoch=epoch, tensorboard=tensorboard, optimizer=optimizer,
@@ -131,6 +130,9 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
         if (epoch + 1) % save_iter == 0:
             utils.save(model=model, optimizer=optimizer, scheduler=scheduler,
                        path=os.path.join(log_dir, 'checkpoints', 'epoch{}.mdl'.format(epoch)))
+
+        # update the learning rate
+        scheduler.step()
 
     # enable testing mode
     model.eval()
