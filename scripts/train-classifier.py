@@ -1,5 +1,4 @@
-from methods.classifiers import StandardClassifier,\
-    RobustClassifier, PretrainedClassifier
+from methods.classifiers import *
 from modules import training
 import modules.data as datasets
 import modules.visualization as vis
@@ -22,7 +21,13 @@ def main():
     parser.add_argument('--noise_level', '-n', type=float, default=0.0)
     parser.add_argument('--encoder_path', '-r', type=str, default=None)
     parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier',
-                        choices=['StandardClassifier', 'PretrainedClassifier', 'RobustClassifier'])
+                        choices=['StandardClassifier', 'PretrainedClassifier', 'RobustClassifier',
+                                 'PenalizeLastLayerFixedForm'])
+    parser.add_argument('--train_encoder', dest='freeze_encoder', action='store_false')
+    parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
+    parser.add_argument('--weight_decay', type=float, default=0.0)
+    parser.add_argument('--lamb', type=float, default=0.0)
+    parser.set_defaults(freeze_encoder=True)
     args = parser.parse_args()
     print(args)
 
@@ -55,11 +60,18 @@ def main():
     if args.model_class == 'PretrainedClassifier':
         model_class = PretrainedClassifier
         assert args.encoder_path is not None
+    if args.model_class == 'PenalizeLastLayerFixedForm':
+        model_class = PenalizeLastLayerFixedForm
+        assert args.encoder_path is not None
 
     model = model_class(input_shape=train_loader.dataset[0][0].shape,
                         architecture_args=architecture_args,
                         encoder_path=args.encoder_path,
-                        device=args.device)
+                        device=args.device,
+                        freeze_encoder=args.freeze_encoder,
+                        grad_weight_decay=args.grad_weight_decay,
+                        weight_decay=args.weight_decay,
+                        lamb=args.lamb)
 
     training.train(model=model,
                    train_loader=train_loader,
