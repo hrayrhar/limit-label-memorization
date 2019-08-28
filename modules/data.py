@@ -38,9 +38,14 @@ def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, seed=42):
     return train_data, val_data, test_data
 
 
-def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42, drop_last=False):
+def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42, drop_last=False,
+                       num_train_examples=None):
     train_data, val_data, test_data = load_mnist_datasets(val_ratio=val_ratio,
                                                           noise_level=noise_level, seed=seed)
+
+    if num_train_examples is not None:
+        subset = np.random.choice(len(train_data), num_train_examples, replace=False)
+        train_data = Subset(train_data, subset)
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True,
                               num_workers=4, drop_last=drop_last)

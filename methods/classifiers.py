@@ -143,7 +143,7 @@ class PretrainedClassifier(BaseClassifier):
 
         return batch_losses, info
 
-
+# TODO: normalize the last layer parameters?
 class PenalizeLastLayerFixedForm(BaseClassifier):
     """ Penalizes the gradients of the last layer and the q network has the correct form.
     """
@@ -190,7 +190,7 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
 
         # skip the last linear layer, will add manually
         self.classifier_base, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'][:-1],
-                                                   input_shape=self.input_shape)
+                                                        input_shape=self.input_shape)
         self.classifier_base = self.classifier_base.to(self.device)
 
         self.last_layer = torch.nn.Linear(256, 10, bias=False).to(self.device)
@@ -231,13 +231,14 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         label_pred = info['label_pred']
 
         y = labels[0].to(self.device)
+        y_one_hot = F.one_hot(y, num_classes=10).float()
 
         # classification loss
         classifier_loss = F.cross_entropy(input=pred, target=y)
 
         # I(g : y | x) penalty
         info_penalty = self.lamb * torch.sum(z ** 2, dim=1).mean() *\
-                       torch.sum(label_pred ** 2, dim=1).mean()
+                       torch.sum((y_one_hot - label_pred) ** 2, dim=1).mean()
 
         # add weight decay on U, the parameter of self.last_layer
         l2_penalty = 0.0
@@ -251,14 +252,6 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
             'l2 penalty': l2_penalty
         }
 
-        # penalize cases when the predicted gradient is not zero
-        # TODO: think on this, what should we panalize here?
-        #       how to justify it?
-        # if self.grad_weight_decay > 0:
-        #     grad_l2_loss = self.grad_weight_decay *\
-        #                    torch.mean(torch.sum(grad_wrt_logits**2, dim=1), dim=0)
-        #     batch_losses['grad_l2'] = grad_l2_loss
-
         return batch_losses, info
 
     def on_iteration_end(self, info, batch_labels, partition, tensorboard, **kwargs):
@@ -267,22 +260,148 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         # track some additional statistics
         z = info['z']
         y = batch_labels[0].to(self.device)
+        y_one_hot = F.one_hot(y, num_classes=10).float()
         label_pred = info['label_pred']
 
         tensorboard.add_scalar('stats/{}_norm_z'.format(partition),
                                torch.sum(z**2, dim=1).mean(),
                                self._current_iteration[partition])
         tensorboard.add_scalar('stats/{}_norm_label_pred_error'.format(partition),
-                               torch.sum(label_pred ** 2, dim=1).mean(),
+                               torch.sum((y_one_hot - label_pred) ** 2, dim=1).mean(),
                                self._current_iteration[partition])
 
         if partition == 'train':
-            tensorboard.add_scalar('states/last_layer_norm',
+            tensorboard.add_scalar('stats/last_layer_norm',
                                    torch.sum(next(self.last_layer.parameters())**2),
                                    self._current_iteration[partition])
 
         self._current_iteration[partition] += 1
 
+
+class PenalizeLastLayerGeneralForm(BaseClassifier):
+    """ Penalizes the gradients of the last layer and the q network has the correct form.
+    """
+    def __init__(self, input_shape, architecture_args, encoder_path, device='cuda',
+                 freeze_encoder=True, grad_weight_decay=0.0, weight_decay=0.0,
+                 lamb=0.0, **kwargs):
+        super(PenalizeLastLayerGeneralForm, self).__init__(**kwargs)
+
+        self.args = {
+            'input_shape': input_shape,
+            'architecture_args': architecture_args,
+            'encoder_path': encoder_path,
+            'device': device,
+            'freeze_encoder': freeze_encoder,
+            'grad_weight_decay': grad_weight_decay,
+            'weight_decay': weight_decay,
+            'lamb': lamb,
+            'class': 'PenalizeLastLayerGeneralForm'
+        }
+
+        assert len(input_shape) == 3
+        self.input_shape = [None] + list(input_shape)
+        self.architecture_args = architecture_args
+        self.encoder_path = encoder_path
+        self.device = device
+        self.freeze_encoder = freeze_encoder
+        self.grad_weight_decay = grad_weight_decay
+        self.weight_decay = weight_decay
+        self.lamb = lamb
+
+        self._current_iteration = defaultdict(lambda: 0)
+
+        # initialize the network
+        vae = utils.load(self.encoder_path, self.device)
+        self.encoder = vae.encoder
+        if self.freeze_encoder:
+            utils.set_requires_grad(self.encoder, False)
+        else:
+            # resent the encoder parameters
+            self.encoder.train()
+            for layer in self.encoder.children():
+                if hasattr(layer, 'reset_parameters'):
+                    layer.reset_parameters()
+
+        # skip the last linear layer, will add manually
+        self.classifier_base, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'][:-1],
+                                                        input_shape=self.input_shape)
+        self.classifier_base = self.classifier_base.to(self.device)
+
+        self.last_layer = torch.nn.Linear(256, 10, bias=False).to(self.device)
+
+        self.grad_predictor = torch.nn.Linear(vae.hidden_shape[-1], 256 * 10).to(self.device)
+
+        print(self)
+
+    def forward(self, inputs, grad_enabled=False, **kwargs):
+        torch.set_grad_enabled(grad_enabled)
+        x = inputs[0].to(self.device)
+
+        # compute classifier predictions
+        z = self.classifier_base(x)
+        pred = self.last_layer(z)
+
+        # predict the gradient wrt to last layer parameters using the general form
+        rx_params = self.encoder(x)
+        rx = self.encoder.mean(rx_params)  # TODO: maybe sampling is better
+        grad_pred = self.grad_predictor(rx).reshape((-1, 10, 256))
+
+        out = {
+            'pred': pred,
+            'z': z,
+            'grad_pred': grad_pred,
+        }
+
+        return out
+
+    def compute_loss(self, inputs, labels, grad_enabled, **kwargs):
+        torch.set_grad_enabled(grad_enabled)
+
+        info = self.forward(inputs=inputs, grad_enabled=grad_enabled)
+        pred = info['pred']
+        z = info['z']
+        grad_pred = info['grad_pred']
+
+        y = labels[0].to(self.device)
+        y_one_hot = F.one_hot(y, num_classes=10).float()
+
+        # classification loss
+        classifier_loss = F.cross_entropy(input=pred, target=y)
+
+        # I(g : y | x) penalty
+        grad_actual = y_one_hot.reshape((-1, 10, 1)) * z.reshape((-1, 1, 256))
+        info_penalty = self.lamb * ((grad_pred - grad_actual)**2).sum(dim=2).sum(dim=1).mean()
+
+        # add weight decay on U, the parameter of self.last_layer
+        l2_penalty = 0.0
+        for param in self.last_layer.parameters():
+            l2_penalty = l2_penalty + torch.sum(param ** 2)
+        l2_penalty *= self.weight_decay
+
+        batch_losses = {
+            'classifier': classifier_loss,
+            'info_penalty': info_penalty,
+            'l2 penalty': l2_penalty
+        }
+
+        return batch_losses, info
+
+    def on_iteration_end(self, info, batch_labels, partition, tensorboard, **kwargs):
+        super(PenalizeLastLayerGeneralForm, self).on_iteration_end(info=info, batch_labels=batch_labels,
+                                                                 partition=partition, **kwargs)
+        # track some additional statistics
+        z = info['z']
+
+        tensorboard.add_scalar('stats/{}_norm_z'.format(partition),
+                               torch.sum(z**2, dim=1).mean(),
+                               self._current_iteration[partition])
+
+        if partition == 'train':
+            tensorboard.add_scalar('stats/last_layer_norm',
+                                   torch.sum(next(self.last_layer.parameters())**2),
+                                   self._current_iteration[partition])
+
+        self._current_iteration[partition] += 1
 
 
 # TODO: add parameter controlling loss weights
