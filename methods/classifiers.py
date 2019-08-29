@@ -18,6 +18,7 @@ class BaseClassifier(torch.nn.Module):
         self._accuracy[partition] = []
 
     def on_iteration_end(self, info, batch_labels, partition, **kwargs):
+        self._current_iteration[partition] += 1
         pred = utils.to_numpy(info['pred']).argmax(axis=1).astype(np.int)
         batch_labels = utils.to_numpy(batch_labels[0]).astype(np.int)
         self._accuracy[partition].append((pred == batch_labels).astype(np.float).mean())
@@ -26,16 +27,26 @@ class BaseClassifier(torch.nn.Module):
         accuracy = np.mean(self._accuracy[partition])
         tensorboard.add_scalar('metrics/{}_accuracy'.format(partition), accuracy, epoch)
 
+    def forward(self, *input, **kwargs):
+        raise NotImplementedError()
+
+    def compute_loss(self, *input, **kwargs):
+        raise NotImplementedError()
+
 
 class StandardClassifier(BaseClassifier):
-    """ Class standard neural network classifiers.
+    """ Standard classifier trained with cross-entropy loss.
+    Has an option to use a pretrained VAE as feature extractor.
     """
-    def __init__(self, input_shape, architecture_args, device='cuda', **kwargs):
+    def __init__(self, input_shape, architecture_args, pretrained_vae_path=None,
+                 freeze_pretrained_parts=False, device='cuda', **kwargs):
         super(StandardClassifier, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
+            'pretrained_vae_path': pretrained_vae_path,
+            'freeze_pretrained_parts': freeze_pretrained_parts,
             'device': device,
             'class': 'StandardClassifier'
         }
@@ -43,6 +54,7 @@ class StandardClassifier(BaseClassifier):
         assert len(input_shape) == 3
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
+        self.pretrained_vae_path = pretrained_vae_path
         self.device = device
 
         # initialize the network
@@ -50,65 +62,13 @@ class StandardClassifier(BaseClassifier):
                                                    input_shape=self.input_shape)
         self.classifier = self.classifier.to(self.device)
 
-        print(self)
-
-    def forward(self, inputs, grad_enabled=False, **kwargs):
-        torch.set_grad_enabled(grad_enabled)
-
-        x = inputs[0].to(self.device)
-        pred = self.classifier(x)
-
-        out = {
-            'pred': pred
-        }
-
-        return out
-
-    def compute_loss(self, inputs, labels, grad_enabled, **kwargs):
-        torch.set_grad_enabled(grad_enabled)
-
-        info = self.forward(inputs=inputs, grad_enabled=grad_enabled)
-        pred = info['pred']
-        y = labels[0].to(self.device)
-
-        classifier_loss = F.cross_entropy(input=pred, target=y)
-
-        batch_losses = {
-            'classifier': classifier_loss,
-        }
-
-        return batch_losses, info
-
-
-class PretrainedClassifier(BaseClassifier):
-    """ Class for classifiers where feature extraction part is pretrained
-    in an unsupervised way.
-    """
-    def __init__(self, input_shape, architecture_args, encoder_path, device='cuda', **kwargs):
-        super(PretrainedClassifier, self).__init__(**kwargs)
-
-        self.args = {
-            'input_shape': input_shape,
-            'architecture_args': architecture_args,
-            'encoder_path': encoder_path,
-            'device': device,
-            'class': 'PretrainedClassifier'
-        }
-
-        assert len(input_shape) == 3
-        self.input_shape = [None] + list(input_shape)
-        self.architecture_args = architecture_args
-        self.encoder_path = encoder_path
-        self.device = device
-
-        # initialize the network
-        vae = utils.load(self.encoder_path, self.device)
-        self.encoder = vae.encoder
-        utils.set_requires_grad(self.encoder, False)
-
-        self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['2layer-classifier'],
-                                                   input_shape=vae.hidden_shape)
-        self.classifier = self.classifier.to(self.device)
+        if pretrained_vae_path is not None:
+            # use the vae encoder weights to initialize corresponding layers of the classifier
+            vae = utils.load(self.pretrained_vae_path, self.device)
+            self.classifier.load_state_dict(vae.encoder.net.state_dict(), strict=False)
+            classifier_params = dict(self.classifier.named_parameters())
+            for name, param in vae.encoder.net.named_parameters():
+                classifier_params[name].requires_grad = not freeze_pretrained_parts
 
         print(self)
 
@@ -116,14 +76,8 @@ class PretrainedClassifier(BaseClassifier):
         torch.set_grad_enabled(grad_enabled)
         x = inputs[0].to(self.device)
 
-        z_params = self.encoder(x)
-        z = self.encoder.mean(z_params)
-
-        # compute classifier predictions
-        pred = self.classifier(z)
-
         out = {
-            'pred': pred,
+            'pred': self.classifier(x),
         }
 
         return out
@@ -146,20 +100,22 @@ class PretrainedClassifier(BaseClassifier):
 
 
 # TODO: normalize the last layer parameters?
+#       to forget about last_layer_l2 parameter
 class PenalizeLastLayerFixedForm(BaseClassifier):
-    """ Penalizes the gradients of the last layer and the q network has the correct form.
+    """ Penalizes the gradients of the last layer weights. The q network has the correct form:
+    (y - s(a)) z^T. Therefore, with q predicts y.
     """
-    def __init__(self, input_shape, architecture_args, encoder_path, device='cuda',
-                 freeze_encoder=True, weight_decay=0.0, lamb=0.0, **kwargs):
+    def __init__(self, input_shape, architecture_args, pretrained_vae_path=None, device='cuda',
+                 freeze_pretrained_parts=True, last_layer_l2=0.0, lamb=0.0, **kwargs):
         super(PenalizeLastLayerFixedForm, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
-            'encoder_path': encoder_path,
+            'pretrained_vae_path': pretrained_vae_path,
             'device': device,
-            'freeze_encoder': freeze_encoder,
-            'weight_decay': weight_decay,
+            'freeze_pretrained_parts': freeze_pretrained_parts,
+            'last_layer_l2': last_layer_l2,
             'lamb': lamb,
             'class': 'PenalizeLastLayerFixedForm'
         }
@@ -167,34 +123,39 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         assert len(input_shape) == 3
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
-        self.encoder_path = encoder_path
+        self.pretrained_vae_path = pretrained_vae_path
         self.device = device
-        self.freeze_encoder = freeze_encoder
-        self.weight_decay = weight_decay
+        self.freeze_pretrained_parts = freeze_pretrained_parts
+        self.last_layer_l2 = last_layer_l2
         self.lamb = lamb
 
         # initialize the network
-        vae = utils.load(self.encoder_path, self.device)
-        self.encoder = vae.encoder
-        if self.freeze_encoder:
-            utils.set_requires_grad(self.encoder, False)
-        else:
-            # resent the encoder parameters
-            self.encoder.train()
-            for layer in self.encoder.children():
-                if hasattr(layer, 'reset_parameters'):
-                    layer.reset_parameters()
+        self.num_classes = self.architecture_args['classifier'][-1]['dim']
+        self.last_layer_dim = self.architecture_args['classifier'][-2]['dim']
 
-        # skip the last linear layer, will add manually
         self.classifier_base, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'][:-1],
                                                         input_shape=self.input_shape)
         self.classifier_base = self.classifier_base.to(self.device)
+        self.classifier_last_layer = torch.nn.Linear(self.last_layer_dim,
+                                                     self.num_classes,
+                                                     bias=False).to(self.device)
 
-        self.last_layer = torch.nn.Linear(256, 10, bias=False).to(self.device)
+        self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                          input_shape=self.input_shape)
+        self.q_base = self.q_base.to(self.device)
 
-        self.label_predictor, _ = nn.parse_feed_forward(args=self.architecture_args['2layer-classifier'],
-                                                        input_shape=vae.hidden_shape)
-        self.label_predictor = self.label_predictor.to(self.device)
+        self.q_top = torch.nn.Sequential(
+            torch.nn.Linear(q_base_shape[-1], 128),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.Linear(128, self.num_classes)).to(self.device)
+
+        if pretrained_vae_path is not None:
+            # use the vae encoder weights to initialize corresponding q_base
+            vae = utils.load(self.pretrained_vae_path, self.device)
+            self.q_base.load_state_dict(vae.encoder.net.state_dict(), strict=False)
+            q_base_params = dict(self.q_base.named_parameters())
+            for name, param in vae.encoder.net.named_parameters():
+                q_base_params[name].requires_grad = not freeze_pretrained_parts
 
         print(self)
 
@@ -204,17 +165,15 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
 
         # compute classifier predictions
         z = self.classifier_base(x)
-        pred = self.last_layer(z)
+        pred = self.classifier_last_layer(z)
 
-        # predict the gradient wrt to last layer parameters using the correct form
-        rx_params = self.encoder(x)
-        rx = self.encoder.mean(rx_params)
-        label_pred = self.label_predictor(rx)
+        # predict labels from x
+        q_label_pred = self.q_top(self.q_base(x))
 
         out = {
             'pred': pred,
             'z': z,
-            'label_pred': label_pred,
+            'q_label_pred': q_label_pred,
         }
 
         return out
@@ -225,29 +184,30 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         info = self.forward(inputs=inputs, grad_enabled=grad_enabled)
         pred = info['pred']
         z = info['z']
-        label_pred = info['label_pred']
+        q_label_pred = info['q_label_pred']
 
         y = labels[0].to(self.device)
-        y_one_hot = F.one_hot(y, num_classes=10).float()
+        y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
 
         # classification loss
         classifier_loss = F.cross_entropy(input=pred, target=y)
 
         # I(g : y | x) penalty
         info_penalty = self.lamb * torch.sum(z ** 2, dim=1).mean() *\
-                       losses.mse(y_one_hot, label_pred)
-
-        # add weight decay on U, the parameter of self.last_layer
-        l2_penalty = 0.0
-        for param in self.last_layer.parameters():
-            l2_penalty = l2_penalty + torch.sum(param ** 2)
-        l2_penalty *= self.weight_decay
+                       losses.mse(y_one_hot, torch.softmax(q_label_pred, dim=1))
 
         batch_losses = {
             'classifier': classifier_loss,
-            'info_penalty': info_penalty,
-            'l2 penalty': l2_penalty
+            'info_penalty': info_penalty
         }
+
+        # add weight decay on U, the parameter of the last layer of classifier
+        if self.last_layer_l2 > 0:
+            last_layer_l2_penalty = 0.0
+            for param in self.classifier_last_layer.parameters():
+                last_layer_l2_penalty += torch.sum(param ** 2)
+            last_layer_l2_penalty *= self.last_layer_l2
+            batch_losses['last_layer_l2_penalty'] = last_layer_l2_penalty
 
         return batch_losses, info
 
@@ -257,38 +217,37 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         # track some additional statistics
         z = info['z']
         y = batch_labels[0].to(self.device)
-        y_one_hot = F.one_hot(y, num_classes=10).float()
-        label_pred = info['label_pred']
+        y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
+        q_label_pred = info['q_label_pred']
 
         tensorboard.add_scalar('stats/{}_norm_z'.format(partition),
                                torch.sum(z**2, dim=1).mean(),
                                self._current_iteration[partition])
         tensorboard.add_scalar('stats/{}_norm_label_pred_error'.format(partition),
-                               losses.mse(y_one_hot, label_pred),
+                               losses.mse(y_one_hot, q_label_pred),
                                self._current_iteration[partition])
 
         if partition == 'train':
             tensorboard.add_scalar('stats/last_layer_norm',
-                                   torch.sum(next(self.last_layer.parameters())**2),
+                                   torch.sum(next(self.classifier_last_layer.parameters()) ** 2),
                                    self._current_iteration[partition])
-
-        self._current_iteration[partition] += 1
 
 
 class PenalizeLastLayerGeneralForm(BaseClassifier):
-    """ Penalizes the gradients of the last layer and the q network has the correct form.
+    """ Penalizes the gradients of the last layer weights. The q network has general form.
+    q(g | x, W) = Net() where g = dL/dU with U being the parameters of the last layer.
     """
-    def __init__(self, input_shape, architecture_args, encoder_path, device='cuda',
-                 freeze_encoder=True, weight_decay=0.0, lamb=0.0, **kwargs):
+    def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
+                 freeze_pretrained_parts=True, last_layer_l2=0.0, lamb=0.0, **kwargs):
         super(PenalizeLastLayerGeneralForm, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
-            'encoder_path': encoder_path,
+            'pretrained_vae_path': pretrained_vae_path,
             'device': device,
-            'freeze_encoder': freeze_encoder,
-            'weight_decay': weight_decay,
+            'freeze_pretrained_parts': freeze_pretrained_parts,
+            'last_layer_l2': last_layer_l2,
             'lamb': lamb,
             'class': 'PenalizeLastLayerGeneralForm'
         }
@@ -296,32 +255,41 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
         assert len(input_shape) == 3
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
-        self.encoder_path = encoder_path
+        self.pretrained_vae_path = pretrained_vae_path
         self.device = device
-        self.freeze_encoder = freeze_encoder
-        self.weight_decay = weight_decay
+        self.freeze_pretrained_parts = freeze_pretrained_parts
+        self.last_layer_l2 = last_layer_l2
         self.lamb = lamb
 
         # initialize the network
-        vae = utils.load(self.encoder_path, self.device)
-        self.encoder = vae.encoder
-        if self.freeze_encoder:
-            utils.set_requires_grad(self.encoder, False)
-        else:
-            # resent the encoder parameters
-            self.encoder.train()
-            for layer in self.encoder.children():
-                if hasattr(layer, 'reset_parameters'):
-                    layer.reset_parameters()
+        self.num_classes = self.architecture_args['classifier'][-1]['dim']
+        self.last_layer_dim = self.architecture_args['classifier'][-2]['dim']
 
-        # skip the last linear layer, will add manually
-        self.classifier_base, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'][:-1],
-                                                        input_shape=self.input_shape)
+        self.classifier_base, _ = nn.parse_feed_forward(
+            args=self.architecture_args['classifier'][:-1],
+            input_shape=self.input_shape)
         self.classifier_base = self.classifier_base.to(self.device)
+        self.classifier_last_layer = torch.nn.Linear(self.last_layer_dim,
+                                                     self.num_classes,
+                                                     bias=False).to(self.device)
 
-        self.last_layer = torch.nn.Linear(256, 10, bias=False).to(self.device)
+        self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                          input_shape=self.input_shape)
+        self.q_base = self.q_base.to(self.device)
 
-        self.grad_predictor = torch.nn.Linear(vae.hidden_shape[-1], 256 * 10).to(self.device)
+        # TODO: parametrize better. Takes (r(x), z), outputs matrix.
+        self.q_top = torch.nn.Sequential(
+            torch.nn.Linear(q_base_shape[-1] + self.last_layer_dim, 128),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.Linear(128, self.num_classes * self.last_layer_dim)).to(self.device)
+
+        if pretrained_vae_path is not None:
+            # use the vae encoder weights to initialize corresponding q_base
+            vae = utils.load(self.pretrained_vae_path, self.device)
+            self.q_base.load_state_dict(vae.encoder.net.state_dict(), strict=False)
+            q_base_params = dict(self.q_base.named_parameters())
+            for name, param in vae.encoder.net.named_parameters():
+                q_base_params[name].requires_grad = not freeze_pretrained_parts
 
         print(self)
 
@@ -331,12 +299,12 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
 
         # compute classifier predictions
         z = self.classifier_base(x)
-        pred = self.last_layer(z)
+        pred = self.classifier_last_layer(z)
 
         # predict the gradient wrt to last layer parameters using the general form
-        rx_params = self.encoder(x)
-        rx = self.encoder.mean(rx_params)
-        grad_pred = self.grad_predictor(rx).reshape((-1, 10, 256))
+        rx = self.q_base(x)
+        grad_pred = self.q_top(torch.cat([rx, z], dim=1))
+        grad_pred = grad_pred.reshape((-1, self.num_classes, self.last_layer_dim))
 
         out = {
             'pred': pred,
@@ -355,64 +323,63 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
         grad_pred = info['grad_pred']
 
         y = labels[0].to(self.device)
-        y_one_hot = F.one_hot(y, num_classes=10).float()
+        y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
 
         # classification loss
         classifier_loss = F.cross_entropy(input=pred, target=y)
 
         # I(g : y | x) penalty
-        grad_actual = y_one_hot.reshape((-1, 10, 1)) * z.reshape((-1, 1, 256))
+        error = (torch.softmax(pred, dim=1) - y_one_hot).reshape(-1, self.num_classes, 1)
+        grad_actual = error * z.reshape((-1, 1, self.last_layer_dim))
         info_penalty = self.lamb * losses.mse(grad_pred, grad_actual)
-
-        # add weight decay on U, the parameter of self.last_layer
-        l2_penalty = 0.0
-        for param in self.last_layer.parameters():
-            l2_penalty = l2_penalty + torch.sum(param ** 2)
-        l2_penalty *= self.weight_decay
 
         batch_losses = {
             'classifier': classifier_loss,
             'info_penalty': info_penalty,
-            'l2 penalty': l2_penalty
         }
+
+        # add weight decay on U, the parameter of the last layer of classifier
+        if self.last_layer_l2 > 0:
+            last_layer_l2_penalty = 0.0
+            for param in self.classifier_last_layer.parameters():
+                last_layer_l2_penalty += torch.sum(param ** 2)
+            last_layer_l2_penalty *= self.last_layer_l2
+            batch_losses['last_layer_l2_penalty'] = last_layer_l2_penalty
 
         return batch_losses, info
 
     def on_iteration_end(self, info, batch_labels, partition, tensorboard, **kwargs):
         super(PenalizeLastLayerGeneralForm, self).on_iteration_end(info=info, batch_labels=batch_labels,
-                                                                 partition=partition, **kwargs)
+                                                                   partition=partition, **kwargs)
         # track some additional statistics
-        z = info['z']
-
         tensorboard.add_scalar('stats/{}_norm_z'.format(partition),
-                               torch.sum(z**2, dim=1).mean(),
+                               torch.sum(info['z']**2, dim=1).mean(),
                                self._current_iteration[partition])
 
         if partition == 'train':
             tensorboard.add_scalar('stats/last_layer_norm',
-                                   torch.sum(next(self.last_layer.parameters())**2),
+                                   torch.sum(next(self.classifier_last_layer.parameters()) ** 2),
                                    self._current_iteration[partition])
-
-        self._current_iteration[partition] += 1
 
 
 # TODO: instead of replacing gradients, maybe we
 #       should linearly interpolate between predicted
 #       and actual gradients
+# TODO: mean gradient?
 class PredictGradOutputFixedForm(BaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     The q network uses the form of output gradients.
     """
-    def __init__(self, input_shape, architecture_args, encoder_path, device='cuda',
-                 freeze_encoder=True, grad_weight_decay=0.0, lamb=0.0, **kwargs):
+    def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
+                 freeze_pretrained_parts=True, grad_weight_decay=0.0, lamb=0.0, **kwargs):
         super(PredictGradOutputFixedForm, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
-            'encoder_path': encoder_path,
+            'pretrained_vae_path': pretrained_vae_path,
             'device': device,
-            'freeze_encoder': freeze_encoder,
+            'freeze_pretrained_parts': freeze_pretrained_parts,
             'grad_weight_decay': grad_weight_decay,
             'lamb': 'lamb',
             'class': 'PredictGradOutputFixedForm'
@@ -421,31 +388,34 @@ class PredictGradOutputFixedForm(BaseClassifier):
         assert len(input_shape) == 3
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
-        self.encoder_path = encoder_path
+        self.pretrained_vae_path = pretrained_vae_path
         self.device = device
-        self.freeze_encoder = freeze_encoder
+        self.freeze_pretrained_parts = freeze_pretrained_parts
         self.grad_weight_decay = grad_weight_decay
         self.lamb = lamb
 
         # initialize the network
-        vae = utils.load(self.encoder_path, self.device)
-        self.encoder = vae.encoder
-        if self.freeze_encoder:
-            utils.set_requires_grad(self.encoder, False)
-        else:
-            # resent the encoder parameters
-            self.encoder.train()
-            for layer in self.encoder.children():
-                if hasattr(layer, 'reset_parameters'):
-                    layer.reset_parameters()
-
         self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'],
                                                    input_shape=self.input_shape)
         self.classifier = self.classifier.to(self.device)
+        self.num_classes = self.architecture_args['classifier'][-1]['dim']
 
-        self.label_predictor, _ = nn.parse_feed_forward(args=self.architecture_args['2layer-classifier'],
-                                                        input_shape=vae.hidden_shape)
-        self.label_predictor = self.label_predictor.to(self.device)
+        self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                          input_shape=self.input_shape)
+        self.q_base = self.q_base.to(self.device)
+
+        self.q_top = torch.nn.Sequential(
+            torch.nn.Linear(q_base_shape[-1], 128),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.Linear(128, self.num_classes)).to(self.device)
+
+        if pretrained_vae_path is not None:
+            # use the vae encoder weights to initialize corresponding q_base
+            vae = utils.load(self.pretrained_vae_path, self.device)
+            self.q_base.load_state_dict(vae.encoder.net.state_dict(), strict=False)
+            q_base_params = dict(self.q_base.named_parameters())
+            for name, param in vae.encoder.net.named_parameters():
+                q_base_params[name].requires_grad = not freeze_pretrained_parts
 
         print(self)
 
@@ -457,20 +427,16 @@ class PredictGradOutputFixedForm(BaseClassifier):
         pred = self.classifier(x)
 
         # predict the gradient wrt to logits
-        rx_params = self.encoder(x)
-        rx = self.encoder.mean(rx_params)
-        label_pred = self.label_predictor(rx)
-        grad_wrt_logits = torch.softmax(pred, dim=1) - label_pred
+        q_label_pred = self.q_top(self.q_base(x))
+        grad_pred = torch.softmax(pred, dim=1) - torch.softmax(q_label_pred, dim=1)
 
-        # to replace the gradients later we use the following trick
-        # this ensures that when we take gradient wrt to pred our
-        # predicted grad_wrt_logits will be returned
-        pred = nn.GradReplacement.apply(pred, grad_wrt_logits)
+        # change the gradients
+        pred = nn.GradReplacement.apply(pred, grad_pred)
 
         out = {
             'pred': pred,
-            'label_pred': label_pred,
-            'grad_wrt_logits': grad_wrt_logits
+            'q_label_pred': q_label_pred,
+            'grad_pred': grad_pred
         }
 
         return out
@@ -480,27 +446,27 @@ class PredictGradOutputFixedForm(BaseClassifier):
 
         info = self.forward(inputs=inputs, grad_enabled=grad_enabled)
         pred = info['pred']
-        label_pred = info['label_pred']
-        grad_wrt_logits = info['grad_wrt_logits']
+        q_label_pred = info['q_label_pred']
+        grad_pred = info['grad_pred']
         y = labels[0].to(self.device)
-        y_one_hot = F.one_hot(y, num_classes=10).float()
+        y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
 
         # classification loss
         classifier_loss = F.cross_entropy(input=pred, target=y)
 
         # gradient matching loss
-        grad_loss = self.lamb * losses.mse(y_one_hot, label_pred)
+        grad_loss = self.lamb * losses.mse(y_one_hot, torch.softmax(q_label_pred, dim=1))
 
         batch_losses = {
             'classifier': classifier_loss,
-            'grad': grad_loss
+            'grad_diff': grad_loss
         }
 
         # penalize cases when the predicted gradient is not zero
         if self.grad_weight_decay > 0:
             grad_l2_loss = self.grad_weight_decay *\
-                           torch.mean(torch.sum(grad_wrt_logits**2, dim=1), dim=0)
-            batch_losses['grad_l2'] = grad_l2_loss
+                           torch.mean(torch.sum(grad_pred**2, dim=1), dim=0)
+            batch_losses['pred_grad_l2'] = grad_l2_loss
 
         return batch_losses, info
 
@@ -509,16 +475,16 @@ class PredictGradOutputGeneralForm(BaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     The q network has general form.
     """
-    def __init__(self, input_shape, architecture_args, encoder_path, device='cuda',
-                 freeze_encoder=True, grad_weight_decay=0.0, lamb=0.0, **kwargs):
+    def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
+                 freeze_pretrained_parts=True, grad_weight_decay=0.0, lamb=0.0, **kwargs):
         super(PredictGradOutputGeneralForm, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
-            'encoder_path': encoder_path,
+            'pretrained_vae_path': pretrained_vae_path,
             'device': device,
-            'freeze_encoder': freeze_encoder,
+            'freeze_pretrained_parts': freeze_pretrained_parts,
             'grad_weight_decay': grad_weight_decay,
             'lamb': 'lamb',
             'class': 'PredictGradOutputGeneralForm'
@@ -527,29 +493,36 @@ class PredictGradOutputGeneralForm(BaseClassifier):
         assert len(input_shape) == 3
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
-        self.encoder_path = encoder_path
+        self.pretrained_vae_path = pretrained_vae_path
         self.device = device
-        self.freeze_encoder = freeze_encoder
+        self.freeze_pretrained_parts = freeze_pretrained_parts
         self.grad_weight_decay = grad_weight_decay
         self.lamb = lamb
 
         # initialize the network
-        vae = utils.load(self.encoder_path, self.device)
-        self.encoder = vae.encoder
-        if self.freeze_encoder:
-            utils.set_requires_grad(self.encoder, False)
-        else:
-            # resent the encoder parameters
-            self.encoder.train()
-            for layer in self.encoder.children():
-                if hasattr(layer, 'reset_parameters'):
-                    layer.reset_parameters()
-
         self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'],
                                                    input_shape=self.input_shape)
         self.classifier = self.classifier.to(self.device)
+        self.num_classes = self.architecture_args['classifier'][-1]['dim']
 
-        self.grad_predictor = torch.nn.Linear(vae.hidden_shape[-1], 10).to(self.device)
+        self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                          input_shape=self.input_shape)
+        self.q_base = self.q_base.to(self.device)
+
+        # NOTE: we want to use classifier paramaters too
+        # TODO: find a good parametrization
+        self.q_top = torch.nn.Sequential(
+            torch.nn.Linear(q_base_shape[-1] + self.num_classes, 128),
+            torch.nn.ReLU(inplace=True),
+            torch.nn.Linear(128, self.num_classes)).to(self.device)
+
+        if pretrained_vae_path is not None:
+            # use the vae encoder weights to initialize corresponding q_base
+            vae = utils.load(self.pretrained_vae_path, self.device)
+            self.q_base.load_state_dict(vae.encoder.net.state_dict(), strict=False)
+            q_base_params = dict(self.q_base.named_parameters())
+            for name, param in vae.encoder.net.named_parameters():
+                q_base_params[name].requires_grad = not freeze_pretrained_parts
 
         print(self)
 
@@ -561,13 +534,10 @@ class PredictGradOutputGeneralForm(BaseClassifier):
         pred_before = self.classifier(x)
 
         # predict the gradient wrt to logits
-        rx_params = self.encoder(x)
-        rx = self.encoder.mean(rx_params)
-        grad_pred = self.grad_predictor(rx)
+        rx = self.q_base(x)
+        grad_pred = self.q_top(torch.cat([rx, pred_before], dim=1))
 
-        # to replace the gradients later we use the following trick
-        # this ensures that when we take gradient wrt to pred our
-        # predicted grad_pred will be returned
+        # change the gradients
         pred = nn.GradReplacement.apply(pred_before, grad_pred)
 
         out = {
@@ -585,26 +555,27 @@ class PredictGradOutputGeneralForm(BaseClassifier):
         pred = info['pred']
         pred_before = info['pred_before']
         grad_pred = info['grad_pred']
+
         y = labels[0].to(self.device)
-        y_one_hot = F.one_hot(y, num_classes=10).float()
+        y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
 
         # classification loss
         classifier_loss = F.cross_entropy(input=pred, target=y)
 
         # gradient matching loss
         grad_actual = torch.softmax(pred_before, dim=1) - y_one_hot
-        grad_loss = self.lamb * losses.mse(grad_actual, grad_pred)
+        grad_diff = self.lamb * losses.mse(grad_actual, grad_pred)
 
         batch_losses = {
             'classifier': classifier_loss,
-            'grad': grad_loss
+            'grad_diff': grad_diff
         }
 
         # penalize cases when the predicted gradient is not zero
         if self.grad_weight_decay > 0:
             grad_l2_loss = self.grad_weight_decay *\
                            torch.mean(torch.sum(grad_pred**2, dim=1), dim=0)
-            batch_losses['grad_l2'] = grad_l2_loss
+            batch_losses['pred_grad_l2'] = grad_l2_loss
 
         return batch_losses, info
 
@@ -618,23 +589,23 @@ class PredictGradOutputGeneralForm(BaseClassifier):
                                torch.sum(grad_pred**2, dim=1).mean(),
                                self._current_iteration[partition])
 
-        self._current_iteration[partition] += 1
 
-
+# TODO: use weights when predicting gradients
+# TODO: use deep supervision
 class PredictGradOutputMetaLearning(BaseClassifier):
     """ Trains the classifier using predicted gradients. The gradient predictor has general form and
     we train it using meta learning type objective.
     """
-    def __init__(self, input_shape, architecture_args, encoder_path, device='cuda',
-                 freeze_encoder=True, grad_weight_decay=0.0, nsteps=1, **kwargs):
+    def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
+                 freeze_pretrained_parts=True, grad_weight_decay=0.0, nsteps=1, **kwargs):
         super(PredictGradOutputMetaLearning, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
-            'encoder_path': encoder_path,
+            'pretrained_vae_path': pretrained_vae_path,
             'device': device,
-            'freeze_encoder': freeze_encoder,
+            'freeze_pretrained_parts': freeze_pretrained_parts,
             'grad_weight_decay': grad_weight_decay,
             'nsteps': nsteps,
             'class': 'PredictGradOutputMetaLearning'
@@ -643,17 +614,17 @@ class PredictGradOutputMetaLearning(BaseClassifier):
         assert len(input_shape) == 3
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
-        self.encoder_path = encoder_path
+        self.pretrained_vae_path = pretrained_vae_path
         self.device = device
-        self.freeze_encoder = freeze_encoder
+        self.freeze_pretrained_parts = freeze_pretrained_parts
         self.grad_weight_decay = grad_weight_decay
         self.nsteps = nsteps
         self.grad_diff_coef = 100.0
 
         # initialize the network
-        vae = utils.load(self.encoder_path, self.device)
+        vae = utils.load(self.pretrained_vae_path, self.device)
         self.encoder = vae.encoder
-        if self.freeze_encoder:
+        if self.freeze_pretrained_parts:
             utils.set_requires_grad(self.encoder, False)
         else:
             # resent the encoder parameters
@@ -665,8 +636,9 @@ class PredictGradOutputMetaLearning(BaseClassifier):
         self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'],
                                                    input_shape=self.input_shape)
         self.classifier = self.classifier.to(self.device)
+        self.num_classes = self.architecture_args['classifier'][-1]['dim']
 
-        self.grad_predictor = torch.nn.Linear(vae.hidden_shape[-1], 10).to(self.device)
+        self.grad_predictor = torch.nn.Linear(vae.hidden_shape[-1], self.num_classes).to(self.device)
 
         print(self)
 
@@ -694,7 +666,7 @@ class PredictGradOutputMetaLearning(BaseClassifier):
 
         x = inputs[0].to(self.device)
         y = labels[0].to(self.device)
-        y_one_hot = F.one_hot(y, num_classes=10).float()
+        y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
 
         # ====================== meta-training ======================
         # detach classifier params and initialize again
@@ -782,7 +754,6 @@ class PredictGradOutputMetaLearning(BaseClassifier):
                                torch.sum(grad_pred**2, dim=1).mean(),
                                self._current_iteration[partition])
 
-        self._current_iteration[partition] += 1
 
     def on_epoch_end(self, partition, tensorboard, epoch, **kwargs):
         super(PredictGradOutputMetaLearning, self).on_epoch_end(partition=partition,

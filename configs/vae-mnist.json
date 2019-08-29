@@ -13,7 +13,7 @@
     {"type": "conv", "filters": 64, "kernel_size": 3, "stride": 2, "padding": 0, "activation": "relu", "batch_norm": true},
     {"type": "conv", "filters": 256, "kernel_size": 3, "stride": 1, "padding": 0, "activation": "relu", "batch_norm": true},
     {"type": "flatten"},
-    {"type": "gaussian", "dim": 32}
+    {"type": "gaussian", "dim": 128}
   ],
-  "hidden_dim": 32
+  "hidden_dim": 128
 }

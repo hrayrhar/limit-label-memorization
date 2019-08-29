@@ -3,7 +3,6 @@ from modules import training
 import modules.data as datasets
 import modules.visualization as vis
 import argparse
-import importlib
 import json
 import os
 
@@ -12,27 +11,30 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', '-c', type=str, required=True)
     parser.add_argument('--device', '-d', default='cuda')
+
     parser.add_argument('--batch_size', '-b', type=int, default=256)
     parser.add_argument('--epochs', '-e', type=int, default=400)
     parser.add_argument('--save_iter', '-s', type=int, default=10)
     parser.add_argument('--vis_iter', '-v', type=int, default=2)
     parser.add_argument('--log_dir', '-l', type=str, default=None)
+
     parser.add_argument('--dataset', '-D', type=str, default='mnist',
                         choices=['mnist'])
-    parser.add_argument('--noise_level', '-n', type=float, default=0.0)
-    parser.add_argument('--encoder_path', '-r', type=str, default=None)
-    parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier',
-                        choices=['StandardClassifier', 'PretrainedClassifier',
-                                 'PenalizeLastLayerFixedForm', 'PenalizeLastLayerGeneralForm',
-                                 'PredictGradOutputFixedForm', 'PredictGradOutputGeneralForm',
-                                 'PredictGradOutputMetaLearning'])
-    parser.add_argument('--train_encoder', dest='freeze_encoder', action='store_false')
-    parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
-    parser.add_argument('--weight_decay', type=float, default=0.0)
-    parser.add_argument('--lamb', type=float, default=0.0)
     parser.add_argument('--num_train_examples', type=int, default=None)
+    parser.add_argument('--noise_level', '-n', type=float, default=0.0)
+
+    parser.add_argument('--pretrained_vae_path', '-r', type=str, default=None)
+    parser.add_argument('--tune_pretrained_parts', dest='freeze_pretrained_parts', action='store_false')
+    parser.set_defaults(freeze_pretrained_parts=True)
+
+    parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier',
+                        choices=['StandardClassifier', 'PenalizeLastLayerFixedForm',
+                                 'PenalizeLastLayerGeneralForm', 'PredictGradOutputFixedForm',
+                                 'PredictGradOutputGeneralForm', 'PredictGradOutputMetaLearning'])
+    parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
+    parser.add_argument('--last_layer_l2', type=float, default=0.0)
+    parser.add_argument('--lamb', type=float, default=0.0)
     parser.add_argument('--nsteps', type=int, default=1)
-    parser.set_defaults(freeze_encoder=True)
     args = parser.parse_args()
     print(args)
 
@@ -63,11 +65,11 @@ def main():
 
     model = model_class(input_shape=train_loader.dataset[0][0].shape,
                         architecture_args=architecture_args,
-                        encoder_path=args.encoder_path,
+                        pretrained_vae_path=args.pretrained_vae_path,
                         device=args.device,
-                        freeze_encoder=args.freeze_encoder,
+                        freeze_pretrained_parts=args.freeze_pretrained_parts,
                         grad_weight_decay=args.grad_weight_decay,
-                        weight_decay=args.weight_decay,
+                        last_layer_l2=args.last_layer_l2,
                         lamb=args.lamb,
                         nsteps=args.nsteps)
 

@@ -5,11 +5,14 @@
     {"type": "conv", "filters": 64, "kernel_size": 3, "stride": 2, "padding": 0, "activation": "relu", "batch_norm": true},
     {"type": "conv", "filters": 256, "kernel_size": 3, "stride": 1, "padding": 0, "activation": "relu", "batch_norm": true},
     {"type": "flatten"},
+    {"type": "fc", "dim": 128, "activation": "relu"},
     {"type": "fc", "dim": 10}
   ],
-  "2layer-classifier": [
-    {"type": "flatten"},
-    {"type": "fc", "dim": 128, "activation": "relu"},
-    {"type": "fc", "dim": 10, "activation": "softmax"}
+  "q-base": [
+    {"type": "conv", "filters": 32, "kernel_size": 4, "stride": 2, "padding": 1, "activation": "relu", "batch_norm": true},
+    {"type": "conv", "filters": 32, "kernel_size": 4, "stride": 2, "padding": 1, "activation": "relu", "batch_norm": true},
+    {"type": "conv", "filters": 64, "kernel_size": 3, "stride": 2, "padding": 0, "activation": "relu", "batch_norm": true},
+    {"type": "conv", "filters": 256, "kernel_size": 3, "stride": 1, "padding": 0, "activation": "relu", "batch_norm": true},
+    {"type": "flatten"}
   ]
 }
