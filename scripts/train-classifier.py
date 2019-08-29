@@ -1,8 +1,9 @@
-from methods.classifiers import *
+from methods import classifiers
 from modules import training
 import modules.data as datasets
 import modules.visualization as vis
 import argparse
+import importlib
 import json
 import os
 
@@ -21,13 +22,16 @@ def main():
     parser.add_argument('--noise_level', '-n', type=float, default=0.0)
     parser.add_argument('--encoder_path', '-r', type=str, default=None)
     parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier',
-                        choices=['StandardClassifier', 'PretrainedClassifier', 'RobustClassifier',
-                                 'PenalizeLastLayerFixedForm', 'PenalizeLastLayerGeneralForm'])
+                        choices=['StandardClassifier', 'PretrainedClassifier',
+                                 'PenalizeLastLayerFixedForm', 'PenalizeLastLayerGeneralForm',
+                                 'PredictGradOutputFixedForm', 'PredictGradOutputGeneralForm',
+                                 'PredictGradOutputMetaLearning'])
     parser.add_argument('--train_encoder', dest='freeze_encoder', action='store_false')
     parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
     parser.add_argument('--weight_decay', type=float, default=0.0)
     parser.add_argument('--lamb', type=float, default=0.0)
     parser.add_argument('--num_train_examples', type=int, default=None)
+    parser.add_argument('--nsteps', type=int, default=1)
     parser.set_defaults(freeze_encoder=True)
     args = parser.parse_args()
     print(args)
@@ -55,19 +59,7 @@ def main():
     with open(args.config, 'r') as f:
         architecture_args = json.load(f)
 
-    model_class = StandardClassifier
-    if args.model_class == 'RobustClassifier':
-        model_class = RobustClassifier
-        assert args.encoder_path is not None
-    if args.model_class == 'PretrainedClassifier':
-        model_class = PretrainedClassifier
-        assert args.encoder_path is not None
-    if args.model_class == 'PenalizeLastLayerFixedForm':
-        model_class = PenalizeLastLayerFixedForm
-        assert args.encoder_path is not None
-    if args.model_class == 'PenalizeLastLayerGeneralForm':
-        model_class = PenalizeLastLayerGeneralForm
-        assert args.encoder_path is not None
+    model_class = getattr(classifiers, args.model_class)
 
     model = model_class(input_shape=train_loader.dataset[0][0].shape,
                         architecture_args=architecture_args,
@@ -76,7 +68,8 @@ def main():
                         freeze_encoder=args.freeze_encoder,
                         grad_weight_decay=args.grad_weight_decay,
                         weight_decay=args.weight_decay,
-                        lamb=args.lamb)
+                        lamb=args.lamb,
+                        nsteps=args.nsteps)
 
     training.train(model=model,
                    train_loader=train_loader,

@@ -62,14 +62,11 @@ def load(path, device=None):
     args = saved_dict['args']
     if device is not None:
         args['device'] = device
-    if args['class'] == 'StandardClassifier':
-        model = classifiers.StandardClassifier(**args)
-    if args['class'] == 'RobustClassifier':
-        model = classifiers.RobustClassifier(**args)
     if args['class'] == 'VAE':
         model = vae.VAE(**args)
     else:
-        raise ValueError('Unknown method class!')
+        model_class = getattr(classifiers, args['class'])
+        model = model_class(**args)
     model.load_state_dict(saved_dict['model'])
     model.eval()
     return model

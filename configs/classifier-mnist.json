@@ -7,7 +7,7 @@
     {"type": "flatten"},
     {"type": "fc", "dim": 10}
   ],
-  "label-predictor": [
+  "2layer-classifier": [
     {"type": "flatten"},
     {"type": "fc", "dim": 128, "activation": "relu"},
     {"type": "fc", "dim": 10, "activation": "softmax"}
