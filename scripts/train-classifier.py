@@ -33,7 +33,7 @@ def main():
                                  'PredictGradOutputGeneralForm', 'PredictGradOutputMetaLearning'])
     parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
     parser.add_argument('--last_layer_l2', type=float, default=0.0)
-    parser.add_argument('--lamb', type=float, default=0.0)
+    parser.add_argument('--lamb', type=float, default=1.0)
     parser.add_argument('--nsteps', type=int, default=1)
     args = parser.parse_args()
     print(args)

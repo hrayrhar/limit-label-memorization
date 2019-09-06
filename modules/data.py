@@ -31,17 +31,23 @@ def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, seed=42):
     test_data.dataset_name = 'mnist'
 
     # corrupt noise_level percent of the training labels
-    for sample_idx in train_data.indices:
+    is_corrupted = np.zeros(len(train_data), dtype=int)  # 0 clean, 1 corrupted, 2 accidentally correct
+    for current_idx, sample_idx in enumerate(train_data.indices):
         if np.random.uniform(0, 1) < noise_level:
-            train_data.dataset.targets[sample_idx] = np.random.randint(10)
+            new_label = np.random.randint(10)
+            if new_label == train_data.dataset.targets[sample_idx]:
+                is_corrupted[current_idx] = 2
+            else:
+                is_corrupted[current_idx] = 1
+            train_data.dataset.targets[sample_idx] = new_label
 
-    return train_data, val_data, test_data
+    return train_data, val_data, test_data, is_corrupted
 
 
 def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42, drop_last=False,
                        num_train_examples=None):
-    train_data, val_data, test_data = load_mnist_datasets(val_ratio=val_ratio,
-                                                          noise_level=noise_level, seed=seed)
+    train_data, val_data, test_data, _ = load_mnist_datasets(val_ratio=val_ratio,
+                                                             noise_level=noise_level, seed=seed)
 
     if num_train_examples is not None:
         subset = np.random.choice(len(train_data), num_train_examples, replace=False)
