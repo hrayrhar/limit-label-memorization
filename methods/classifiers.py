@@ -103,10 +103,10 @@ class StandardClassifier(BaseClassifier):
 #       to forget about last_layer_l2 parameter
 class PenalizeLastLayerFixedForm(BaseClassifier):
     """ Penalizes the gradients of the last layer weights. The q network has the correct form:
-    (y - s(a)) z^T. Therefore, with q predicts y.
+    (s(a) - y) z^T. Therefore, with q predicts y.
     """
     def __init__(self, input_shape, architecture_args, pretrained_vae_path=None, device='cuda',
-                 freeze_pretrained_parts=True, last_layer_l2=0.0, lamb=0.0, **kwargs):
+                 freeze_pretrained_parts=True, last_layer_l2=0.0, lamb=1.0, **kwargs):
         super(PenalizeLastLayerFixedForm, self).__init__(**kwargs)
 
         self.args = {
@@ -238,7 +238,7 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
     q(g | x, W) = Net() where g = dL/dU with U being the parameters of the last layer.
     """
     def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
-                 freeze_pretrained_parts=True, last_layer_l2=0.0, lamb=0.0, **kwargs):
+                 freeze_pretrained_parts=True, last_layer_l2=0.0, lamb=1.0, **kwargs):
         super(PenalizeLastLayerGeneralForm, self).__init__(**kwargs)
 
         self.args = {
@@ -371,7 +371,7 @@ class PredictGradOutputFixedForm(BaseClassifier):
     The q network uses the form of output gradients.
     """
     def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
-                 freeze_pretrained_parts=True, grad_weight_decay=0.0, lamb=0.0, **kwargs):
+                 freeze_pretrained_parts=True, grad_weight_decay=0.0, lamb=1.0, **kwargs):
         super(PredictGradOutputFixedForm, self).__init__(**kwargs)
 
         self.args = {
@@ -476,7 +476,7 @@ class PredictGradOutputGeneralForm(BaseClassifier):
     The q network has general form.
     """
     def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
-                 freeze_pretrained_parts=True, grad_weight_decay=0.0, lamb=0.0, **kwargs):
+                 freeze_pretrained_parts=True, grad_weight_decay=0.0, lamb=1.0, **kwargs):
         super(PredictGradOutputGeneralForm, self).__init__(**kwargs)
 
         self.args = {
@@ -753,7 +753,6 @@ class PredictGradOutputMetaLearning(BaseClassifier):
         tensorboard.add_scalar('stats/{}_pred_grad_norm'.format(partition),
                                torch.sum(grad_pred**2, dim=1).mean(),
                                self._current_iteration[partition])
-
 
     def on_epoch_end(self, partition, tensorboard, epoch, **kwargs):
         super(PredictGradOutputMetaLearning, self).on_epoch_end(partition=partition,
