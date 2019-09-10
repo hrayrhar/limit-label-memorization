@@ -30,7 +30,8 @@ def main():
     parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier',
                         choices=['StandardClassifier', 'PenalizeLastLayerFixedForm',
                                  'PenalizeLastLayerGeneralForm', 'PredictGradOutputFixedForm',
-                                 'PredictGradOutputGeneralForm', 'PredictGradOutputMetaLearning'])
+                                 'PredictGradOutputGeneralForm', 'PredictGradOutputMetaLearning',
+                                 'PredictGradOutputGeneralFormUseLabel'])
     parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
     parser.add_argument('--last_layer_l2', type=float, default=0.0)
     parser.add_argument('--lamb', type=float, default=1.0)
