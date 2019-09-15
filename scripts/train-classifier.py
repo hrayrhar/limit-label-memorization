@@ -36,7 +36,6 @@ def main():
                                  'PredictGradOutputGeneralForm', 'PredictGradOutputMetaLearning',
                                  'PredictGradOutputGeneralFormUseLabel'])
     parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
-    parser.add_argument('--last_layer_l2', type=float, default=0.0)
     parser.add_argument('--lamb', type=float, default=1.0)
     parser.add_argument('--nsteps', type=int, default=1)
     args = parser.parse_args()
@@ -77,7 +76,6 @@ def main():
                         device=args.device,
                         freeze_pretrained_parts=args.freeze_pretrained_parts,
                         grad_weight_decay=args.grad_weight_decay,
-                        last_layer_l2=args.last_layer_l2,
                         lamb=args.lamb,
                         nsteps=args.nsteps,
                         loss_function=args.loss_function)

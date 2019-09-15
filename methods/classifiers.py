@@ -110,14 +110,12 @@ class StandardClassifier(BaseClassifier):
         return batch_losses, info
 
 
-# TODO: normalize the last layer parameters?
-#       to forget about last_layer_l2 parameter
 class PenalizeLastLayerFixedForm(BaseClassifier):
     """ Penalizes the gradients of the last layer weights. The q network has the correct form:
     (s(a) - y) z^T. Therefore, with q predicts y.
     """
     def __init__(self, input_shape, architecture_args, pretrained_vae_path=None, device='cuda',
-                 freeze_pretrained_parts=True, last_layer_l2=0.0, lamb=1.0, **kwargs):
+                 freeze_pretrained_parts=True, grad_weight_decay=0.0, lamb=1.0, **kwargs):
         super(PenalizeLastLayerFixedForm, self).__init__(**kwargs)
 
         self.args = {
@@ -126,7 +124,7 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
             'pretrained_vae_path': pretrained_vae_path,
             'device': device,
             'freeze_pretrained_parts': freeze_pretrained_parts,
-            'last_layer_l2': last_layer_l2,
+            'grad_weight_decay': grad_weight_decay,
             'lamb': lamb,
             'class': 'PenalizeLastLayerFixedForm'
         }
@@ -137,7 +135,7 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         self.pretrained_vae_path = pretrained_vae_path
         self.device = device
         self.freeze_pretrained_parts = freeze_pretrained_parts
-        self.last_layer_l2 = last_layer_l2
+        self.grad_weight_decay = grad_weight_decay
         self.lamb = lamb
 
         # initialize the network
@@ -204,21 +202,22 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         classifier_loss = F.cross_entropy(input=pred, target=y)
 
         # I(g : y | x) penalty
-        info_penalty = self.lamb * torch.sum(z ** 2, dim=1).mean() *\
-                       losses.mse(y_one_hot, torch.softmax(q_label_pred, dim=1))
+        info_penalty = self.lamb * torch.mean(torch.sum(z ** 2, dim=1) *
+                                              torch.sum((y_one_hot - torch.softmax(q_label_pred, dim=1))**2, dim=1),
+                                              dim=0)
 
         batch_losses = {
             'classifier': classifier_loss,
             'info_penalty': info_penalty
         }
 
-        # add weight decay on U, the parameter of the last layer of classifier
-        if self.last_layer_l2 > 0:
-            last_layer_l2_penalty = 0.0
-            for param in self.classifier_last_layer.parameters():
-                last_layer_l2_penalty += torch.sum(param ** 2)
-            last_layer_l2_penalty *= self.last_layer_l2
-            batch_losses['last_layer_l2_penalty'] = last_layer_l2_penalty
+        # add predicted gradient norm penalty
+        if self.grad_weight_decay > 0:
+            # predicted gradient is [s(a) - s(q_label_pred)] z^T
+            diff = torch.softmax(pred, dim=1) - torch.softmax(q_label_pred, dim=1)
+            grad_l2_loss = self.grad_weight_decay *\
+                           torch.mean(torch.sum(z ** 2, dim=1) * torch.sum(diff ** 2, dim=1), dim=0)
+            batch_losses['pred_grad_l2'] = grad_l2_loss
 
         return batch_losses, info
 
@@ -226,22 +225,9 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         super(PenalizeLastLayerFixedForm, self).on_iteration_end(info=info, batch_labels=batch_labels,
                                                                  partition=partition, **kwargs)
         # track some additional statistics
-        z = info['z']
-        y = batch_labels[0].to(self.device)
-        y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
-        q_label_pred = info['q_label_pred']
-
         tensorboard.add_scalar('stats/{}_norm_z'.format(partition),
-                               torch.sum(z**2, dim=1).mean(),
+                               torch.sum(info['z']**2, dim=1).mean(),
                                self._current_iteration[partition])
-        tensorboard.add_scalar('stats/{}_norm_label_pred_error'.format(partition),
-                               losses.mse(y_one_hot, q_label_pred),
-                               self._current_iteration[partition])
-
-        if partition == 'train':
-            tensorboard.add_scalar('stats/last_layer_norm',
-                                   torch.sum(next(self.classifier_last_layer.parameters()) ** 2),
-                                   self._current_iteration[partition])
 
 
 class PenalizeLastLayerGeneralForm(BaseClassifier):
@@ -249,7 +235,7 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
     q(g | x, W) = Net() where g = dL/dU with U being the parameters of the last layer.
     """
     def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
-                 freeze_pretrained_parts=True, last_layer_l2=0.0, lamb=1.0, **kwargs):
+                 freeze_pretrained_parts=True, grad_weight_decay=0.0, lamb=1.0, **kwargs):
         super(PenalizeLastLayerGeneralForm, self).__init__(**kwargs)
 
         self.args = {
@@ -258,7 +244,7 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
             'pretrained_vae_path': pretrained_vae_path,
             'device': device,
             'freeze_pretrained_parts': freeze_pretrained_parts,
-            'last_layer_l2': last_layer_l2,
+            'grad_weight_decay': grad_weight_decay,
             'lamb': lamb,
             'class': 'PenalizeLastLayerGeneralForm'
         }
@@ -269,7 +255,7 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
         self.pretrained_vae_path = pretrained_vae_path
         self.device = device
         self.freeze_pretrained_parts = freeze_pretrained_parts
-        self.last_layer_l2 = last_layer_l2
+        self.grad_weight_decay = grad_weight_decay
         self.lamb = lamb
 
         # initialize the network
@@ -349,13 +335,12 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
             'info_penalty': info_penalty,
         }
 
-        # add weight decay on U, the parameter of the last layer of classifier
-        if self.last_layer_l2 > 0:
-            last_layer_l2_penalty = 0.0
-            for param in self.classifier_last_layer.parameters():
-                last_layer_l2_penalty += torch.sum(param ** 2)
-            last_layer_l2_penalty *= self.last_layer_l2
-            batch_losses['last_layer_l2_penalty'] = last_layer_l2_penalty
+        # add predicted gradient norm penalty
+        if self.grad_weight_decay > 0:
+            # predicted gradient is grad_pred
+            grad_l2_loss = self.grad_weight_decay *\
+                           torch.sum((grad_pred - grad_actual)**2, dim=1).sum(dim=1).mean(dim=0)
+            batch_losses['pred_grad_l2'] = grad_l2_loss
 
         return batch_losses, info
 
@@ -367,16 +352,7 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
                                torch.sum(info['z']**2, dim=1).mean(),
                                self._current_iteration[partition])
 
-        if partition == 'train':
-            tensorboard.add_scalar('stats/last_layer_norm',
-                                   torch.sum(next(self.classifier_last_layer.parameters()) ** 2),
-                                   self._current_iteration[partition])
 
-
-# TODO: instead of replacing gradients, maybe we
-#       should linearly interpolate between predicted
-#       and actual gradients
-# TODO: mean gradient?
 class PredictGradOutputFixedForm(BaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     The q network uses the form of output gradients.
@@ -465,15 +441,15 @@ class PredictGradOutputFixedForm(BaseClassifier):
         # classification loss
         classifier_loss = F.cross_entropy(input=pred, target=y)
 
-        # gradient matching loss
-        grad_loss = self.lamb * losses.mse(y_one_hot, torch.softmax(q_label_pred, dim=1))
+        # I(g : y | x) penalty
+        info_penalty = self.lamb * losses.mse(y_one_hot, torch.softmax(q_label_pred, dim=1))
 
         batch_losses = {
             'classifier': classifier_loss,
-            'grad_diff': grad_loss
+            'info_penalty': info_penalty
         }
 
-        # penalize cases when the predicted gradient is not zero
+        # add predicted gradient norm penalty
         if self.grad_weight_decay > 0:
             grad_l2_loss = self.grad_weight_decay *\
                            torch.mean(torch.sum(grad_pred**2, dim=1), dim=0)
@@ -573,16 +549,16 @@ class PredictGradOutputGeneralForm(BaseClassifier):
         # classification loss
         classifier_loss = F.cross_entropy(input=pred, target=y)
 
-        # gradient matching loss
+        # I(g : y | x) penalty
         grad_actual = torch.softmax(pred_before, dim=1) - y_one_hot
-        grad_diff = self.lamb * losses.mse(grad_actual, grad_pred)
+        info_penalty = self.lamb * losses.mse(grad_actual, grad_pred)
 
         batch_losses = {
             'classifier': classifier_loss,
-            'grad_diff': grad_diff
+            'info_penalty': info_penalty
         }
 
-        # penalize cases when the predicted gradient is not zero
+        # add predicted gradient norm penalty
         if self.grad_weight_decay > 0:
             grad_l2_loss = self.grad_weight_decay *\
                            torch.mean(torch.sum(grad_pred**2, dim=1), dim=0)
@@ -700,7 +676,7 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
             'grad_diff': grad_diff
         }
 
-        # penalize cases when the predicted gradient is not zero
+        # add predicted gradient norm penalty
         if self.grad_weight_decay > 0:
             grad_l2_loss = self.grad_weight_decay *\
                            torch.mean(torch.sum(grad_pred**2, dim=1), dim=0)
@@ -865,7 +841,7 @@ class PredictGradOutputMetaLearning(BaseClassifier):
             'grad_diff': grad_diff_loss
         }
 
-        # penalize cases when the predicted gradient is not zero
+        # add predicted gradient norm penalty
         if self.grad_weight_decay > 0:
             grad_l2_loss = self.grad_weight_decay *\
                            torch.mean(torch.sum(grad_pred**2, dim=1))
