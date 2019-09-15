@@ -17,7 +17,7 @@ def main():
     parser.add_argument('--vis_iter', '-v', type=int, default=2)
     parser.add_argument('--log_dir', '-l', type=str, default=None)
     parser.add_argument('--dataset', '-D', type=str, default='mnist',
-                        choices=['mnist'])
+                        choices=['mnist', 'cifar10'])
     args = parser.parse_args()
     print(args)
 
@@ -25,6 +25,9 @@ def main():
     if args.dataset == 'mnist':
         train_loader, val_loader, test_loader = datasets.load_mnist_loaders(batch_size=args.batch_size,
                                                                             noise_level=0)
+    if args.dataset == 'cifar10':
+        train_loader, val_loader, test_loader = datasets.load_cifar10_loaders(batch_size=args.batch_size,
+                                                                              noise_level=0)
 
     example_shape = train_loader.dataset[0][0].shape
     print("Dataset is loaded:\n\ttrain_samples: {}\n\tval_samples: {}\n\t"

@@ -39,7 +39,8 @@ class StandardClassifier(BaseClassifier):
     Has an option to use a pretrained VAE as feature extractor.
     """
     def __init__(self, input_shape, architecture_args, pretrained_vae_path=None,
-                 freeze_pretrained_parts=False, device='cuda', **kwargs):
+                 freeze_pretrained_parts=False, device='cuda', loss_function='ce',
+                 **kwargs):
         super(StandardClassifier, self).__init__(**kwargs)
 
         self.args = {
@@ -48,6 +49,7 @@ class StandardClassifier(BaseClassifier):
             'pretrained_vae_path': pretrained_vae_path,
             'freeze_pretrained_parts': freeze_pretrained_parts,
             'device': device,
+            'loss_function': loss_function,
             'class': 'StandardClassifier'
         }
 
@@ -56,8 +58,10 @@ class StandardClassifier(BaseClassifier):
         self.architecture_args = architecture_args
         self.pretrained_vae_path = pretrained_vae_path
         self.device = device
+        self.loss_function = loss_function
 
         # initialize the network
+        self.num_classes = self.architecture_args['classifier'][-1]['dim']
         self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'],
                                                    input_shape=self.input_shape)
         self.classifier = self.classifier.to(self.device)
@@ -90,7 +94,14 @@ class StandardClassifier(BaseClassifier):
         y = labels[0].to(self.device)
 
         # classification loss
-        classifier_loss = F.cross_entropy(input=pred, target=y)
+        if self.loss_function == 'ce':
+            classifier_loss = F.cross_entropy(input=pred, target=y)
+        if self.loss_function == 'mse':
+            y_one_hot = y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
+            classifier_loss = losses.mse(y_one_hot, torch.softmax(pred, dim=1))
+        if self.loss_function == 'mad':
+            y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
+            classifier_loss = losses.mad(y_one_hot, torch.softmax(pred, dim=1))
 
         batch_losses = {
             'classifier': classifier_loss,

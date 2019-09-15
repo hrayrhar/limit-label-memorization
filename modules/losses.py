@@ -10,6 +10,14 @@ def mse(x, x_rec):
     return mse
 
 
+def mad(x, x_rec):
+    x = x.reshape((x.shape[0], -1))
+    x_rec = x_rec.reshape((x_rec.shape[0], -1))
+    mad = torch.sum(torch.abs(x - x_rec), dim=1)
+    mad = torch.mean(mad, dim=0)
+    return mad
+
+
 def binary_cross_entropy(x, x_rec):
     x = x.reshape((x.shape[0], -1))
     x_rec = x_rec.reshape((x_rec.shape[0], -1))

@@ -19,13 +19,16 @@ def main():
     parser.add_argument('--log_dir', '-l', type=str, default=None)
 
     parser.add_argument('--dataset', '-D', type=str, default='mnist',
-                        choices=['mnist'])
+                        choices=['mnist', 'cifar10'])
     parser.add_argument('--num_train_examples', type=int, default=None)
     parser.add_argument('--noise_level', '-n', type=float, default=0.0)
 
     parser.add_argument('--pretrained_vae_path', '-r', type=str, default=None)
     parser.add_argument('--tune_pretrained_parts', dest='freeze_pretrained_parts', action='store_false')
     parser.set_defaults(freeze_pretrained_parts=True)
+
+    parser.add_argument('--loss_function', type=str, default='ce',
+                        choices=['ce', 'mse', 'mad'])
 
     parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier',
                         choices=['StandardClassifier', 'PenalizeLastLayerFixedForm',
@@ -42,6 +45,10 @@ def main():
     # Load data
     if args.dataset == 'mnist':
         train_loader, val_loader, test_loader = datasets.load_mnist_loaders(
+            batch_size=args.batch_size, noise_level=args.noise_level,
+            num_train_examples=args.num_train_examples)
+    if args.dataset == 'cifar10':
+        train_loader, val_loader, test_loader = datasets.load_cifar10_loaders(
             batch_size=args.batch_size, noise_level=args.noise_level,
             num_train_examples=args.num_train_examples)
 
@@ -72,7 +79,8 @@ def main():
                         grad_weight_decay=args.grad_weight_decay,
                         last_layer_l2=args.last_layer_l2,
                         lamb=args.lamb,
-                        nsteps=args.nsteps)
+                        nsteps=args.nsteps,
+                        loss_function=args.loss_function)
 
     training.train(model=model,
                    train_loader=train_loader,
