@@ -73,12 +73,13 @@ def load(path, device=None):
 
 
 def apply_on_dataset(model, dataset, batch_size=256, cpu=True, description="",
-                     output_keys_regexp='.*', **kwargs):
+                     output_keys_regexp='.*', max_num_examples=None, **kwargs):
     model.eval()
 
     n_examples = len(dataset)
     loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=False)
     outputs = defaultdict(list)
+    current_number_of_examples = 0
 
     for inputs_batch, labels_batch in tqdm(loader, desc=description):
         if isinstance(inputs_batch, torch.Tensor):
@@ -91,9 +92,14 @@ def apply_on_dataset(model, dataset, batch_size=256, cpu=True, description="",
                 v = to_cpu(v)
             outputs[k].append(v)
 
+        current_number_of_examples += len(inputs_batch[0])
+        if (max_num_examples is not None) and current_number_of_examples >= max_num_examples:
+            break
+
     for k in outputs:
         outputs[k] = torch.cat(outputs[k], dim=0)
-        assert len(outputs[k]) == n_examples
+        if max_num_examples is None:
+            assert len(outputs[k]) == n_examples
 
     return outputs
 

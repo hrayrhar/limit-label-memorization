@@ -11,29 +11,29 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', '-c', type=str, required=True)
     parser.add_argument('--device', '-d', default='cuda')
+
     parser.add_argument('--batch_size', '-b', type=int, default=256)
     parser.add_argument('--epochs', '-e', type=int, default=400)
     parser.add_argument('--save_iter', '-s', type=int, default=10)
     parser.add_argument('--vis_iter', '-v', type=int, default=2)
     parser.add_argument('--log_dir', '-l', type=str, default=None)
+
     parser.add_argument('--dataset', '-D', type=str, default='mnist',
                         choices=['mnist', 'cifar10'])
+    parser.add_argument('--num_train_examples', type=int, default=None)
+    parser.add_argument('--noise_level', '-n', type=float, default=0.0)
+    parser.add_argument('--transform_function', type=str, default=None,
+                        choices=[None, 'remove_random_chunks'])
+    parser.add_argument('--transform_validation', dest='transform_validation', action='store_true')
+    parser.add_argument('--no-transform_validation', dest='transform_validation', action='store_false')
+    parser.set_defaults(transform_validation=True)
+    parser.add_argument('--remove_prob', type=float, default=0.5)
+
     args = parser.parse_args()
     print(args)
 
     # Load data
-    if args.dataset == 'mnist':
-        train_loader, val_loader, test_loader = datasets.load_mnist_loaders(batch_size=args.batch_size,
-                                                                            noise_level=0)
-    if args.dataset == 'cifar10':
-        train_loader, val_loader, test_loader = datasets.load_cifar10_loaders(batch_size=args.batch_size,
-                                                                              noise_level=0)
-
-    example_shape = train_loader.dataset[0][0].shape
-    print("Dataset is loaded:\n\ttrain_samples: {}\n\tval_samples: {}\n\t"
-          "test_samples: {}\n\tsample_shape: {}".format(
-        len(train_loader.dataset), len(val_loader.dataset),
-        len(test_loader.dataset), example_shape))
+    train_loader, val_loader, test_loader = datasets.load_data_from_arguments(args)
 
     # Options
     optimization_args = {

@@ -22,19 +22,24 @@ def main():
                         choices=['mnist', 'cifar10'])
     parser.add_argument('--num_train_examples', type=int, default=None)
     parser.add_argument('--noise_level', '-n', type=float, default=0.0)
+    parser.add_argument('--transform_function', type=str, default=None,
+                        choices=[None, 'remove_random_chunks'])
+    parser.add_argument('--transform_validation', dest='transform_validation', action='store_true')
+    parser.add_argument('--no-transform_validation', dest='transform_validation', action='store_false')
+    parser.set_defaults(transform_validation=True)
+    parser.add_argument('--remove_prob', type=float, default=0.5)
 
     parser.add_argument('--pretrained_vae_path', '-r', type=str, default=None)
     parser.add_argument('--tune_pretrained_parts', dest='freeze_pretrained_parts', action='store_false')
     parser.set_defaults(freeze_pretrained_parts=True)
-
-    parser.add_argument('--loss_function', type=str, default='ce',
-                        choices=['ce', 'mse', 'mad'])
 
     parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier',
                         choices=['StandardClassifier', 'PenalizeLastLayerFixedForm',
                                  'PenalizeLastLayerGeneralForm', 'PredictGradOutputFixedForm',
                                  'PredictGradOutputGeneralForm', 'PredictGradOutputMetaLearning',
                                  'PredictGradOutputGeneralFormUseLabel'])
+    parser.add_argument('--loss_function', type=str, default='ce',
+                        choices=['ce', 'mse', 'mad'])
     parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
     parser.add_argument('--lamb', type=float, default=1.0)
     parser.add_argument('--nsteps', type=int, default=1)
@@ -42,20 +47,7 @@ def main():
     print(args)
 
     # Load data
-    if args.dataset == 'mnist':
-        train_loader, val_loader, test_loader = datasets.load_mnist_loaders(
-            batch_size=args.batch_size, noise_level=args.noise_level,
-            num_train_examples=args.num_train_examples)
-    if args.dataset == 'cifar10':
-        train_loader, val_loader, test_loader = datasets.load_cifar10_loaders(
-            batch_size=args.batch_size, noise_level=args.noise_level,
-            num_train_examples=args.num_train_examples)
-
-    example_shape = train_loader.dataset[0][0].shape
-    print("Dataset is loaded:\n\ttrain_samples: {}\n\tval_samples: {}\n\t"
-          "test_samples: {}\n\tsample_shape: {}".format(
-        len(train_loader.dataset), len(val_loader.dataset),
-        len(test_loader.dataset), example_shape))
+    train_loader, val_loader, test_loader = datasets.load_data_from_arguments(args)
 
     # Options
     optimization_args = {
