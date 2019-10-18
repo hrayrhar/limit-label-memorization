@@ -1,5 +1,5 @@
 from collections import defaultdict
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
 from torch import optim
 from modules import utils
 from tqdm import tqdm
@@ -122,7 +122,9 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
 
         # add visualizations
         if (epoch + 1) % vis_iter == 0 and hasattr(model, 'visualize'):
-            visualizations = model.visualize(train_loader, val_loader)
+            visualizations = model.visualize(train_loader, val_loader, tensorboard=tensorboard, epoch=epoch)
+            # visualizations is a dictionary containing figures in (name, fig) format.
+            # there are visualizations created using matplotlib rather than tensorboard
             for (name, fig) in visualizations.items():
                 tensorboard.add_figure(name, fig, epoch)
 

@@ -21,7 +21,6 @@ conda install pytorch torchvision -c pytorch
 For monitoring the training `tensorboard` and `tensorboardX` are needed.
 ```bash
 pip install tensorflow  # or tensorflow-gpu, this will install tensorboard
-pip install tensorboardX
 ```
 
 ## Using the code
