@@ -1,5 +1,6 @@
 from collections import defaultdict
 from modules import nn, utils, losses
+from modules import visualization as vis
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -32,6 +33,24 @@ class BaseClassifier(torch.nn.Module):
 
     def compute_loss(self, *input, **kwargs):
         raise NotImplementedError()
+
+    def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
+        visualizations = {}
+
+        # add gradient norm histograms
+        vis.ce_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-ce-grad')
+        if val_loader is not None:
+            vis.ce_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-ce-grad')
+
+        # add gradient pair plots
+        for p in [(0, 1), (4, 9)]:
+            fig, _ = vis.ce_gradient_pair_scatter(self, train_loader, d1=p[0], d2=p[1])
+            visualizations['gradients/train-ce-scatter-{}-{}'.format(p[0], p[1])] = fig
+            if val_loader is not None:
+                fig, _ = vis.ce_gradient_pair_scatter(self, val_loader, d1=p[0], d2=p[1])
+                visualizations['gradients/val-ce-scatter-{}-{}'.format(p[0], p[1])] = fig
+
+        return visualizations
 
 
 class StandardClassifier(BaseClassifier):
@@ -457,6 +476,26 @@ class PredictGradOutputFixedForm(BaseClassifier):
 
         return batch_losses, info
 
+    def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
+        super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
+
+        visualizations = {}
+
+        # add gradient norm histograms
+        vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
+        if val_loader is not None:
+            vis.pred_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-pred-grad')
+
+        # add gradient pair plots
+        for p in [(0, 1), (4, 9)]:
+            fig, _ = vis.pred_gradient_pair_scatter(self, train_loader, d1=p[0], d2=p[1])
+            visualizations['gradients/train-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
+            if val_loader is not None:
+                fig, _ = vis.pred_gradient_pair_scatter(self, val_loader, d1=p[0], d2=p[1])
+                visualizations['gradients/val-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
+
+        return visualizations
+
 
 class PredictGradOutputGeneralForm(BaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
@@ -576,6 +615,26 @@ class PredictGradOutputGeneralForm(BaseClassifier):
                                torch.sum(grad_pred**2, dim=1).mean(),
                                self._current_iteration[partition])
 
+    def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
+        super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
+
+        visualizations = {}
+
+        # add gradient norm histograms
+        vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
+        if val_loader is not None:
+            vis.pred_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-pred-grad')
+
+        # add gradient pair plots
+        for p in [(0, 1), (4, 9)]:
+            fig, _ = vis.pred_gradient_pair_scatter(self, train_loader, d1=p[0], d2=p[1])
+            visualizations['gradients/train-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
+            if val_loader is not None:
+                fig, _ = vis.pred_gradient_pair_scatter(self, val_loader, d1=p[0], d2=p[1])
+                visualizations['gradients/val-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
+
+        return visualizations
+
 
 class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
@@ -693,6 +752,26 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
         tensorboard.add_scalar('stats/{}_pred_grad_norm'.format(partition),
                                torch.sum(grad_pred**2, dim=1).mean(),
                                self._current_iteration[partition])
+
+    def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
+        super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
+
+        visualizations = {}
+
+        # add gradient norm histograms
+        vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
+        if val_loader is not None:
+            vis.pred_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-pred-grad')
+
+        # add gradient pair plots
+        for p in [(0, 1), (4, 9)]:
+            fig, _ = vis.pred_gradient_pair_scatter(self, train_loader, d1=p[0], d2=p[1])
+            visualizations['gradients/train-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
+            if val_loader is not None:
+                fig, _ = vis.pred_gradient_pair_scatter(self, val_loader, d1=p[0], d2=p[1])
+                visualizations['gradients/val-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
+
+        return visualizations
 
 
 # TODO: use weights when predicting gradients

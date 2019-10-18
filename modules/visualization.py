@@ -4,6 +4,7 @@ These visualization tools will note save figures. That can be later done by
 calling the savefig(fig, path) below. The purpose of this design is to make it
 possible to use these tools in both jupyter notebooks and in ordinary scripts.
 """
+import torch.nn.functional as F
 from sklearn.manifold import TSNE
 from modules import utils
 import numpy as np
@@ -13,6 +14,12 @@ import torch
 import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot
+
+
+_colors = ['#1f77b4', '#aec7e8', '#ff7f0e', '#ffbb78', '#2ca02c', '#98df8a',
+           '#d62728', '#ff9896', '#9467bd', '#c5b0d5', '#8c564b', '#c49c94',
+           '#e377c2', '#f7b6d2', '#7f7f7f', '#c7c7c7', '#bcbd22', '#dbdb8d',
+           '#17becf', '#9edae5']
 
 
 def get_image(x):
@@ -171,6 +178,92 @@ def latent_space_tsne(model, data_loader, plt=None):
     ax.set_xlim(L[0], R[0])
     ax.set_ylim(L[1], R[1])
     ax.set_title('Latent space TSNE plot')
+    return fig, plt
+
+
+def ce_gradient_norm_histogram(model, data_loader, tensorboard, epoch, name, max_num_examples=10000):
+    model.eval()
+
+    pred = utils.apply_on_dataset(model=model, dataset=data_loader.dataset,
+                                  output_keys_regexp='pred', description='grad-histogram:pred',
+                                  max_num_examples=max_num_examples)['pred']
+    labels = [p[1] for p in data_loader.dataset]
+    labels = torch.tensor(labels, dtype=torch.long)
+    labels = F.one_hot(labels, num_classes=model.num_classes).float()
+    labels = utils.to_cpu(labels)
+
+    grad_wrt_logits = torch.softmax(pred, dim=-1)[:max_num_examples] - labels[:max_num_examples]
+    grad_norms = torch.sum(grad_wrt_logits**2, dim=-1)
+    tensorboard.add_histogram(tag=name, values=grad_norms, global_step=epoch)
+
+
+def ce_gradient_pair_scatter(model, data_loader, d1=0, d2=1, max_num_examples=2000, plt=None):
+    if plt is None:
+        plt = matplotlib.pyplot
+    model.eval()
+
+    pred = utils.apply_on_dataset(model=model, dataset=data_loader.dataset,
+                                  output_keys_regexp='pred',
+                                  max_num_examples=max_num_examples,
+                                  description='grad-pair-scatter:pred')['pred']
+    labels = [p[1] for p in data_loader.dataset]
+    labels = torch.tensor(labels, dtype=torch.long)
+    labels = F.one_hot(labels, num_classes=model.num_classes).float()
+    labels = utils.to_cpu(labels)
+    grad_wrt_logits = torch.softmax(pred, dim=-1)[:max_num_examples] - labels[:max_num_examples]
+
+    fig, ax = plt.subplots(1)
+    plt.scatter(grad_wrt_logits[:, d1], grad_wrt_logits[:, d2])
+    ax.set_xlabel(str(d1))
+    ax.set_ylabel(str(d2))
+    # L = np.percentile(grad_wrt_logits, q=5, axis=0)
+    # R = np.percentile(grad_wrt_logits, q=95, axis=0)
+    # ax.set_xlim(L[d1], R[d1])
+    # ax.set_ylim(L[d2], R[d2])
+    ax.set_title('Two coordinates of grad wrt to logits')
+    return fig, plt
+
+
+def pred_gradient_norm_histogram(model, data_loader, tensorboard, epoch, name, max_num_examples=10000):
+    model.eval()
+
+    pred = utils.apply_on_dataset(model=model, dataset=data_loader.dataset,
+                                  output_keys_regexp='grad_pred', description='grad-histogram:grad_pred',
+                                  max_num_examples=max_num_examples)['grad_pred']
+    labels = [p[1] for p in data_loader.dataset]
+    labels = torch.tensor(labels, dtype=torch.long)
+    labels = F.one_hot(labels, num_classes=model.num_classes).float()
+    labels = utils.to_cpu(labels)
+
+    grad_wrt_logits = torch.softmax(pred, dim=-1)[:max_num_examples] - labels[:max_num_examples]
+    grad_norms = torch.sum(grad_wrt_logits**2, dim=-1)
+    tensorboard.add_histogram(tag=name, values=grad_norms, global_step=epoch)
+
+
+def pred_gradient_pair_scatter(model, data_loader, d1=0, d2=1, max_num_examples=2000, plt=None):
+    if plt is None:
+        plt = matplotlib.pyplot
+    model.eval()
+
+    pred = utils.apply_on_dataset(model=model, dataset=data_loader.dataset,
+                                  output_keys_regexp='grad_pred',
+                                  max_num_examples=max_num_examples,
+                                  description='grad-pair-scatter:grad_pred')['grad_pred']
+    labels = [p[1] for p in data_loader.dataset]
+    labels = torch.tensor(labels, dtype=torch.long)
+    labels = F.one_hot(labels, num_classes=model.num_classes).float()
+    labels = utils.to_cpu(labels)
+    grad_wrt_logits = torch.softmax(pred, dim=-1)[:max_num_examples] - labels[:max_num_examples]
+
+    fig, ax = plt.subplots(1)
+    plt.scatter(grad_wrt_logits[:, d1], grad_wrt_logits[:, d2])
+    ax.set_xlabel(str(d1))
+    ax.set_ylabel(str(d2))
+    # L = np.percentile(grad_wrt_logits, q=5, axis=0)
+    # R = np.percentile(grad_wrt_logits, q=95, axis=0)
+    # ax.set_xlim(L[d1], R[d1])
+    # ax.set_ylim(L[d2], R[d2])
+    ax.set_title('Two coordinates of grad wrt to logits')
     return fig, plt
 
 
