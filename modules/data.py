@@ -19,7 +19,33 @@ def split(dataset, val_ratio, seed):
     return train_data, val_data
 
 
-def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, seed=42):
+def remove_random_chunks(x, prob):
+    """ Divide the image into 4x4 patches and remove patches randomly.
+    """
+    ret = x.clone()
+    chunk_size = 4
+    assert x.shape[0] % chunk_size == 0
+    assert x.shape[1] % chunk_size == 0
+    n_x_blocks = x.shape[0] // chunk_size
+    n_y_blocks = x.shape[1] // chunk_size
+    random_value = np.random.uniform(size=(n_x_blocks, n_y_blocks))
+    for i in range(n_x_blocks):
+        for j in range(n_y_blocks):
+            if random_value[i, j] < prob:
+                ret[i * chunk_size:(i+1) * chunk_size, j * chunk_size:(j+1) * chunk_size] = 0
+    return ret
+
+
+def create_remove_random_chunks_function(prob=0.5):
+    """ Returns a remove_random_chunks function with given probability.
+    """
+    def modify(x):
+        return remove_random_chunks(x, prob=prob)
+    return modify
+
+
+def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, transform_function=None,
+                        transform_validation=False, seed=42):
     data_dir = os.path.join(os.path.dirname(__file__), '../data/mnist/')
 
     train_data = datasets.MNIST(data_dir, download=True, train=True, transform=transforms.ToTensor())
@@ -41,13 +67,30 @@ def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, seed=42):
                 is_corrupted[current_idx] = 1
             train_data.dataset.targets[sample_idx] = new_label
 
+    # modify images if needed
+    if transform_function is not None:
+        # transform training samples
+        for sample_idx in train_data.indices:
+            train_data.dataset.data[sample_idx] = transform_function(train_data.dataset.data[sample_idx])
+
+        if transform_validation:
+            # transform validation samples
+            for sample_idx in val_data.indices:
+                val_data.dataset.data[sample_idx] = transform_function(val_data.dataset.data[sample_idx])
+
+            # transform testing samples
+            for sample_idx in range(len(test_data)):
+                test_data.data[sample_idx] = transform_function(test_data.data[sample_idx])
+
     return train_data, val_data, test_data, is_corrupted
 
 
-def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42, drop_last=False,
-                       num_train_examples=None):
-    train_data, val_data, test_data, _ = load_mnist_datasets(val_ratio=val_ratio,
-                                                             noise_level=noise_level, seed=seed)
+def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
+                       drop_last=False, num_train_examples=None, transform_function=None,
+                       transform_validation=False):
+    train_data, val_data, test_data, _ = load_mnist_datasets(
+        val_ratio=val_ratio, noise_level=noise_level, transform_function=transform_function,
+        transform_validation=transform_validation, seed=seed)
 
     if num_train_examples is not None:
         subset = np.random.choice(len(train_data), num_train_examples, replace=False)
@@ -88,8 +131,8 @@ def load_cifar10_datasets(val_ratio=0.2, noise_level=0.0, seed=42):
     return train_data, val_data, test_data, is_corrupted
 
 
-def load_cifar10_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42, drop_last=False,
-                         num_train_examples=None):
+def load_cifar10_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
+                         drop_last=False, num_train_examples=None):
     train_data, val_data, test_data, _ = load_cifar10_datasets(val_ratio=val_ratio,
                                                                noise_level=noise_level, seed=seed)
 
@@ -103,5 +146,33 @@ def load_cifar10_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42
                             num_workers=4, drop_last=drop_last)
     test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True,
                              num_workers=4, drop_last=drop_last)
+
+    return train_loader, val_loader, test_loader
+
+
+def load_data_from_arguments(args):
+    """ Helper method for loading data from arguments.
+    """
+    transform_function = None
+    if args.transform_function == 'remove_random_chunks':
+        transform_function = create_remove_random_chunks_function(args.remove_prob)
+
+    if args.dataset == 'mnist':
+        train_loader, val_loader, test_loader = load_mnist_loaders(
+            batch_size=args.batch_size, noise_level=args.noise_level,
+            transform_function=transform_function,
+            transform_validation=args.transform_validation,
+            num_train_examples=args.num_train_examples)
+
+    if args.dataset == 'cifar10':
+        train_loader, val_loader, test_loader = load_cifar10_loaders(
+            batch_size=args.batch_size, noise_level=args.noise_level,
+            num_train_examples=args.num_train_examples)
+
+    example_shape = train_loader.dataset[0][0].shape
+    print("Dataset is loaded:\n\ttrain_samples: {}\n\tval_samples: {}\n\t"
+          "test_samples: {}\n\tsample_shape: {}".format(
+        len(train_loader.dataset), len(val_loader.dataset),
+        len(test_loader.dataset), example_shape))
 
     return train_loader, val_loader, test_loader
