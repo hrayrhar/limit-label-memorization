@@ -477,9 +477,7 @@ class PredictGradOutputFixedForm(BaseClassifier):
         return batch_losses, info
 
     def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
-        super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
-
-        visualizations = {}
+        visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
 
         # add gradient norm histograms
         vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
@@ -616,9 +614,7 @@ class PredictGradOutputGeneralForm(BaseClassifier):
                                self._current_iteration[partition])
 
     def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
-        super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
-
-        visualizations = {}
+        visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
 
         # add gradient norm histograms
         vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
@@ -754,9 +750,7 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
                                self._current_iteration[partition])
 
     def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
-        super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
-
-        visualizations = {}
+        visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
 
         # add gradient norm histograms
         vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
