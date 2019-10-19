@@ -134,7 +134,8 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
     (s(a) - y) z^T. Therefore, with q predicts y.
     """
     def __init__(self, input_shape, architecture_args, pretrained_vae_path=None, device='cuda',
-                 freeze_pretrained_parts=True, grad_weight_decay=0.0, lamb=1.0, **kwargs):
+                 freeze_pretrained_parts=True, grad_weight_decay=0.0, grad_l1_penalty=0.0,
+                 lamb=1.0, **kwargs):
         super(PenalizeLastLayerFixedForm, self).__init__(**kwargs)
 
         self.args = {
@@ -144,6 +145,7 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
             'device': device,
             'freeze_pretrained_parts': freeze_pretrained_parts,
             'grad_weight_decay': grad_weight_decay,
+            'grad_l1_penalty': grad_l1_penalty,
             'lamb': lamb,
             'class': 'PenalizeLastLayerFixedForm'
         }
@@ -155,6 +157,7 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         self.device = device
         self.freeze_pretrained_parts = freeze_pretrained_parts
         self.grad_weight_decay = grad_weight_decay
+        self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
 
         # initialize the network
@@ -238,6 +241,9 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
                            torch.mean(torch.sum(z ** 2, dim=1) * torch.sum(diff ** 2, dim=1), dim=0)
             batch_losses['pred_grad_l2'] = grad_l2_loss
 
+        if self.grad_l1_penalty > 0:
+            raise NotImplementedError("Implement L1 penalty in this case.")
+
         return batch_losses, info
 
     def on_iteration_end(self, info, batch_labels, partition, tensorboard, **kwargs):
@@ -254,7 +260,8 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
     q(g | x, W) = Net() where g = dL/dU with U being the parameters of the last layer.
     """
     def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
-                 freeze_pretrained_parts=True, grad_weight_decay=0.0, lamb=1.0, **kwargs):
+                 freeze_pretrained_parts=True, grad_weight_decay=0.0, grad_l1_penalty=0.0,
+                 lamb=1.0, **kwargs):
         super(PenalizeLastLayerGeneralForm, self).__init__(**kwargs)
 
         self.args = {
@@ -264,6 +271,7 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
             'device': device,
             'freeze_pretrained_parts': freeze_pretrained_parts,
             'grad_weight_decay': grad_weight_decay,
+            'grad_l1_penalty': grad_l1_penalty,
             'lamb': lamb,
             'class': 'PenalizeLastLayerGeneralForm'
         }
@@ -275,6 +283,7 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
         self.device = device
         self.freeze_pretrained_parts = freeze_pretrained_parts
         self.grad_weight_decay = grad_weight_decay
+        self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
 
         # initialize the network
@@ -361,6 +370,11 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
                            torch.sum((grad_pred - grad_actual)**2, dim=1).sum(dim=1).mean(dim=0)
             batch_losses['pred_grad_l2'] = grad_l2_loss
 
+        if self.grad_l1_penalty > 0:
+            grad_l1_loss = self.grad_l1_penalty *\
+                           torch.sum(torch.abs(grad_pred - grad_actual), dim=1).sum(dim=1).mean(dim=0)
+            batch_losses['pred_grad_l1'] = grad_l1_loss
+
         return batch_losses, info
 
     def on_iteration_end(self, info, batch_labels, partition, tensorboard, **kwargs):
@@ -377,7 +391,8 @@ class PredictGradOutputFixedForm(BaseClassifier):
     The q network uses the form of output gradients.
     """
     def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
-                 freeze_pretrained_parts=True, grad_weight_decay=0.0, lamb=1.0, **kwargs):
+                 freeze_pretrained_parts=True, grad_weight_decay=0.0, grad_l1_penalty=0.0,
+                 lamb=1.0, **kwargs):
         super(PredictGradOutputFixedForm, self).__init__(**kwargs)
 
         self.args = {
@@ -387,6 +402,7 @@ class PredictGradOutputFixedForm(BaseClassifier):
             'device': device,
             'freeze_pretrained_parts': freeze_pretrained_parts,
             'grad_weight_decay': grad_weight_decay,
+            'grad_l1_penalty': grad_l1_penalty,
             'lamb': 'lamb',
             'class': 'PredictGradOutputFixedForm'
         }
@@ -398,6 +414,7 @@ class PredictGradOutputFixedForm(BaseClassifier):
         self.device = device
         self.freeze_pretrained_parts = freeze_pretrained_parts
         self.grad_weight_decay = grad_weight_decay
+        self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
 
         # initialize the network
@@ -474,6 +491,11 @@ class PredictGradOutputFixedForm(BaseClassifier):
                            torch.mean(torch.sum(grad_pred**2, dim=1), dim=0)
             batch_losses['pred_grad_l2'] = grad_l2_loss
 
+        if self.grad_l1_penalty > 0:
+            grad_l1_loss = self.grad_l1_penalty * \
+                           torch.mean(torch.sum(torch.abs(grad_pred), dim=1), dim=0)
+            batch_losses['pred_grad_l1'] = grad_l1_loss
+
         return batch_losses, info
 
     def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
@@ -500,7 +522,8 @@ class PredictGradOutputGeneralForm(BaseClassifier):
     The q network has general form.
     """
     def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
-                 freeze_pretrained_parts=True, grad_weight_decay=0.0, lamb=1.0, **kwargs):
+                 freeze_pretrained_parts=True, grad_weight_decay=0.0, grad_l1_penalty=0.0,
+                 lamb=1.0, **kwargs):
         super(PredictGradOutputGeneralForm, self).__init__(**kwargs)
 
         self.args = {
@@ -510,6 +533,7 @@ class PredictGradOutputGeneralForm(BaseClassifier):
             'device': device,
             'freeze_pretrained_parts': freeze_pretrained_parts,
             'grad_weight_decay': grad_weight_decay,
+            'grad_l1_penalty': grad_l1_penalty,
             'lamb': 'lamb',
             'class': 'PredictGradOutputGeneralForm'
         }
@@ -521,6 +545,7 @@ class PredictGradOutputGeneralForm(BaseClassifier):
         self.device = device
         self.freeze_pretrained_parts = freeze_pretrained_parts
         self.grad_weight_decay = grad_weight_decay
+        self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
 
         # initialize the network
@@ -601,17 +626,12 @@ class PredictGradOutputGeneralForm(BaseClassifier):
                            torch.mean(torch.sum(grad_pred**2, dim=1), dim=0)
             batch_losses['pred_grad_l2'] = grad_l2_loss
 
+        if self.grad_l1_penalty > 0:
+            grad_l1_loss = self.grad_l1_penalty * \
+                           torch.mean(torch.sum(torch.abs(grad_pred), dim=1), dim=0)
+            batch_losses['pred_grad_l1'] = grad_l1_loss
+
         return batch_losses, info
-
-    def on_iteration_end(self, info, batch_labels, partition, tensorboard, **kwargs):
-        super(PredictGradOutputGeneralForm, self).on_iteration_end(info=info, batch_labels=batch_labels,
-                                                                   partition=partition, **kwargs)
-        # track some additional statistics
-        grad_pred = info['grad_pred']
-
-        tensorboard.add_scalar('stats/{}_pred_grad_norm'.format(partition),
-                               torch.sum(grad_pred**2, dim=1).mean(),
-                               self._current_iteration[partition])
 
     def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
         visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
@@ -637,7 +657,8 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
     The q network has general form and uses label information.
     """
     def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
-                 freeze_pretrained_parts=True, grad_weight_decay=0.0, lamb=1.0, **kwargs):
+                 freeze_pretrained_parts=True, grad_weight_decay=0.0, grad_l1_penalty=0.0,
+                 lamb=1.0, **kwargs):
         super(PredictGradOutputGeneralFormUseLabel, self).__init__(**kwargs)
 
         self.args = {
@@ -647,6 +668,7 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
             'device': device,
             'freeze_pretrained_parts': freeze_pretrained_parts,
             'grad_weight_decay': grad_weight_decay,
+            'grad_l1_penalty': grad_l1_penalty,
             'lamb': 'lamb',
             'class': 'PredictGradOutputGeneralFormUseLabel'
         }
@@ -658,6 +680,7 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
         self.device = device
         self.freeze_pretrained_parts = freeze_pretrained_parts
         self.grad_weight_decay = grad_weight_decay
+        self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
 
         # initialize the network
@@ -737,17 +760,12 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
                            torch.mean(torch.sum(grad_pred**2, dim=1), dim=0)
             batch_losses['pred_grad_l2'] = grad_l2_loss
 
+        if self.grad_l1_penalty > 0:
+            grad_l1_loss = self.grad_l1_penalty * \
+                           torch.mean(torch.sum(torch.abs(grad_pred), dim=1), dim=0)
+            batch_losses['pred_grad_l1'] = grad_l1_loss
+
         return batch_losses, info
-
-    def on_iteration_end(self, info, batch_labels, partition, tensorboard, **kwargs):
-        super(PredictGradOutputGeneralFormUseLabel, self).on_iteration_end(info=info, batch_labels=batch_labels,
-                                                                   partition=partition, **kwargs)
-        # track some additional statistics
-        grad_pred = info['grad_pred']
-
-        tensorboard.add_scalar('stats/{}_pred_grad_norm'.format(partition),
-                               torch.sum(grad_pred**2, dim=1).mean(),
-                               self._current_iteration[partition])
 
     def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
         visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
@@ -770,6 +788,8 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
 
 # TODO: use weights when predicting gradients
 # TODO: use deep supervision
+# TODO: look at the scale of the predicted gradients
+# TODO: add gradient visualizations
 class PredictGradOutputMetaLearning(BaseClassifier):
     """ Trains the classifier using predicted gradients. The gradient predictor has general form and
     we train it using meta learning type objective.
