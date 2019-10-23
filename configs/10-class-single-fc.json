@@ -1,0 +1,6 @@
+{
+  "classifier": [
+    {"type": "flatten"},
+    {"type": "fc", "dim": 10}
+  ]
+}
