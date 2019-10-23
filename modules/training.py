@@ -80,7 +80,7 @@ def run_partition(model, epoch, tensorboard, optimizer, loader, partition, train
 
 
 def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
-          optimization_args=None, log_dir=None):
+          optimization_args=None, log_dir=None, args_to_log=None):
     """ Trains the model. Validation loader can be none.
     Assumptions:
     1. loaders return (batch_inputs, batch_labels), where both can be lists or torch.Tensors
@@ -95,6 +95,7 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
 
     tensorboard = SummaryWriter(log_dir)
     print("Visualize logs using: tensorboard --logdir={0}".format(log_dir))
+    tensorboard.add_text('script arguments', repr(args_to_log))
 
     optimizer = build_optimizer(model.parameters(), optimization_args)
     scheduler = build_scheduler(optimizer, optimization_args)
