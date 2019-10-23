@@ -34,13 +34,14 @@ class BaseClassifier(torch.nn.Module):
     def compute_loss(self, *input, **kwargs):
         raise NotImplementedError()
 
-    def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
+    def visualize(self, train_loader, val_loader, tensorboard=None, epoch=None, **kwargs):
         visualizations = {}
 
-        # add gradient norm histograms
-        vis.ce_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-ce-grad')
-        if val_loader is not None:
-            vis.ce_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-ce-grad')
+        # gradient norm tensorboard histograms
+        if tensorboard is not None:
+            vis.ce_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-ce-grad')
+            if val_loader is not None:
+                vis.ce_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-ce-grad')
 
         # add gradient pair plots
         for p in [(0, 1), (4, 9)]:
@@ -80,9 +81,9 @@ class StandardClassifier(BaseClassifier):
         self.loss_function = loss_function
 
         # initialize the network
-        self.num_classes = self.architecture_args['classifier'][-1]['dim']
-        self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                   input_shape=self.input_shape)
+        self.classifier, output_shape = nn.parse_feed_forward(args=self.architecture_args['classifier'],
+                                                              input_shape=self.input_shape)
+        self.num_classes = output_shape[-1]
         self.classifier = self.classifier.to(self.device)
 
         if pretrained_vae_path is not None:
@@ -498,13 +499,15 @@ class PredictGradOutputFixedForm(BaseClassifier):
 
         return batch_losses, info
 
-    def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
-        visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
+    def visualize(self, train_loader, val_loader, tensorboard=None, epoch=None, **kwargs):
+        visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader,
+                                                                           tensorboard, epoch)
 
-        # add gradient norm histograms
-        vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
-        if val_loader is not None:
-            vis.pred_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-pred-grad')
+        # gradient norm tensorboard histograms
+        if tensorboard is not None:
+            vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
+            if val_loader is not None:
+                vis.pred_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-pred-grad')
 
         # add gradient pair plots
         for p in [(0, 1), (4, 9)]:
@@ -633,13 +636,15 @@ class PredictGradOutputGeneralForm(BaseClassifier):
 
         return batch_losses, info
 
-    def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
-        visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
+    def visualize(self, train_loader, val_loader, tensorboard=None, epoch=None, **kwargs):
+        visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader,
+                                                                           tensorboard, epoch)
 
-        # add gradient norm histograms
-        vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
-        if val_loader is not None:
-            vis.pred_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-pred-grad')
+        # gradient norm tensorboard histograms
+        if tensorboard is not None:
+            vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
+            if val_loader is not None:
+                vis.pred_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-pred-grad')
 
         # add gradient pair plots
         for p in [(0, 1), (4, 9)]:
@@ -767,13 +772,15 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
 
         return batch_losses, info
 
-    def visualize(self, train_loader, val_loader, tensorboard, epoch, **kwargs):
-        visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader, tensorboard, epoch)
+    def visualize(self, train_loader, val_loader, tensorboard=None, epoch=None, **kwargs):
+        visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader,
+                                                                           tensorboard, epoch)
 
-        # add gradient norm histograms
-        vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
-        if val_loader is not None:
-            vis.pred_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-pred-grad')
+        # gradient norm tensorboard histograms
+        if tensorboard is not None:
+            vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
+            if val_loader is not None:
+                vis.pred_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-pred-grad')
 
         # add gradient pair plots
         for p in [(0, 1), (4, 9)]:
