@@ -12,7 +12,7 @@ class PretrainedResNet34(torch.nn.Module):
     def __init__(self):
         super(PretrainedResNet34, self).__init__()
         self.resnet = models.resnet34(pretrained=True)
-        self.output_shape = [None, 512, 1, 1]
+        self.output_shape = [None, 512]
 
         # freeze weights
         params = dict(self.resnet.named_parameters())
@@ -38,7 +38,7 @@ class PretrainedResNet34(torch.nn.Module):
         x = self.resnet.avgpool(x)
         # x = torch.flatten(x, 1)
         # x = self.resnet.fc(x)
-        return x
+        return x.reshape((x.shape[0], -1))
 
 
 class PretrainedMNISTVAE(torch.nn.Module):
