@@ -15,7 +15,7 @@ def main():
     parser.add_argument('--batch_size', '-b', type=int, default=256)
     parser.add_argument('--epochs', '-e', type=int, default=400)
     parser.add_argument('--save_iter', '-s', type=int, default=10)
-    parser.add_argument('--vis_iter', '-v', type=int, default=2)
+    parser.add_argument('--vis_iter', '-v', type=int, default=4)
     parser.add_argument('--log_dir', '-l', type=str, default=None)
 
     parser.add_argument('--dataset', '-D', type=str, default='mnist',
@@ -32,14 +32,12 @@ def main():
     parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier',
                         choices=['StandardClassifier', 'PenalizeLastLayerFixedForm',
                                  'PenalizeLastLayerGeneralForm', 'PredictGradOutputFixedForm',
-                                 'PredictGradOutputGeneralForm', 'PredictGradOutputMetaLearning',
-                                 'PredictGradOutputGeneralFormUseLabel'])
+                                 'PredictGradOutputGeneralForm', 'PredictGradOutputGeneralFormUseLabel'])
     parser.add_argument('--loss_function', type=str, default='ce',
                         choices=['ce', 'mse', 'mad'])
     parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
     parser.add_argument('--grad_l1_penalty', '-S', type=float, default=0.0)
     parser.add_argument('--lamb', type=float, default=1.0)
-    parser.add_argument('--nsteps', type=int, default=1)
     parser.add_argument('--pretrained_arg', '-r', type=str, default=None)
     args = parser.parse_args()
     print(args)
@@ -67,7 +65,6 @@ def main():
                         grad_weight_decay=args.grad_weight_decay,
                         grad_l1_penalty=args.grad_l1_penalty,
                         lamb=args.lamb,
-                        nsteps=args.nsteps,
                         loss_function=args.loss_function)
 
     training.train(model=model,
