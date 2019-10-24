@@ -194,6 +194,7 @@ def ce_gradient_norm_histogram(model, data_loader, tensorboard, epoch, name, max
 
     grad_wrt_logits = torch.softmax(pred, dim=-1)[:max_num_examples] - labels[:max_num_examples]
     grad_norms = torch.sum(grad_wrt_logits**2, dim=-1)
+    grad_norms = utils.to_numpy(grad_norms)
     tensorboard.add_histogram(tag=name, values=grad_norms, global_step=epoch)
 
 
@@ -211,6 +212,7 @@ def ce_gradient_pair_scatter(model, data_loader, d1=0, d2=1, max_num_examples=20
     labels = F.one_hot(labels, num_classes=model.num_classes).float()
     labels = utils.to_cpu(labels)
     grad_wrt_logits = torch.softmax(pred, dim=-1)[:max_num_examples] - labels[:max_num_examples]
+    grad_wrt_logits = utils.to_numpy(grad_wrt_logits)
 
     fig, ax = plt.subplots(1, figsize=(5, 5))
     plt.scatter(grad_wrt_logits[:, d1], grad_wrt_logits[:, d2])
