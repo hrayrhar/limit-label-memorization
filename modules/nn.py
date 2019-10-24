@@ -1,5 +1,4 @@
 """ Some tools for building basic NN blocks """
-from modules import resnet_cifar10
 import numpy as np
 from torch import nn
 import torch
@@ -59,11 +58,6 @@ class Identity(nn.Module):
 
 def parse_feed_forward(args, input_shape):
     """Parses a sequential feed-forward neural network from json config."""
-
-    if isinstance(args, dict) and args.get('resnet-cifar10', False):
-        net = resnet_cifar10.resnet20()
-        output_shape = net(torch.rand([2] + list(input_shape[1:]))).shape[1:]
-        return net, output_shape
 
     net = []
     for cur_layer in args:
