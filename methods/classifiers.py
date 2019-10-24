@@ -58,7 +58,7 @@ class StandardClassifier(BaseClassifier):
     """ Standard classifier trained with cross-entropy loss.
     Has an option to work on pretrained representation of x.
     """
-    def __init__(self, input_shape, architecture_args, pretrained_arg=False,
+    def __init__(self, input_shape, architecture_args, pretrained_arg=None,
                  device='cuda', loss_function='ce',
                  **kwargs):
         super(StandardClassifier, self).__init__(**kwargs)
@@ -127,17 +127,15 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
     """ Penalizes the gradients of the last layer weights. The q network has the correct form:
     (s(a) - y) z^T. Therefore, with q predicts y.
     """
-    def __init__(self, input_shape, architecture_args, pretrained_vae_path=None, device='cuda',
-                 freeze_pretrained_parts=True, grad_weight_decay=0.0, grad_l1_penalty=0.0,
-                 lamb=1.0, **kwargs):
+    def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
+                 grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, **kwargs):
         super(PenalizeLastLayerFixedForm, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
-            'pretrained_vae_path': pretrained_vae_path,
+            'pretrained_arg': pretrained_arg,
             'device': device,
-            'freeze_pretrained_parts': freeze_pretrained_parts,
             'grad_weight_decay': grad_weight_decay,
             'grad_l1_penalty': grad_l1_penalty,
             'lamb': lamb,
@@ -147,9 +145,8 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         assert len(input_shape) == 3
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
-        self.pretrained_vae_path = pretrained_vae_path
+        self.pretrained_arg = pretrained_arg
         self.device = device
-        self.freeze_pretrained_parts = freeze_pretrained_parts
         self.grad_weight_decay = grad_weight_decay
         self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
@@ -165,22 +162,18 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
                                                      self.num_classes,
                                                      bias=False).to(self.device)
 
-        self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
-                                                          input_shape=self.input_shape)
-        self.q_base = self.q_base.to(self.device)
+        if self.pretrained_arg is not None:
+            self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
+            q_base_shape = self.q_base.output_shape
+        else:
+            self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                              input_shape=self.input_shape)
+            self.q_base = self.q_base.to(self.device)
 
         self.q_top = torch.nn.Sequential(
             torch.nn.Linear(q_base_shape[-1], 128),
             torch.nn.ReLU(inplace=True),
             torch.nn.Linear(128, self.num_classes)).to(self.device)
-
-        if pretrained_vae_path is not None:
-            # use the vae encoder weights to initialize corresponding q_base
-            vae = utils.load(self.pretrained_vae_path, self.device)
-            self.q_base.load_state_dict(vae.encoder.net.state_dict(), strict=False)
-            q_base_params = dict(self.q_base.named_parameters())
-            for name, param in vae.encoder.net.named_parameters():
-                q_base_params[name].requires_grad = not freeze_pretrained_parts
 
         print(self)
 
@@ -253,17 +246,15 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
     """ Penalizes the gradients of the last layer weights. The q network has general form.
     q(g | x, W) = Net() where g = dL/dU with U being the parameters of the last layer.
     """
-    def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
-                 freeze_pretrained_parts=True, grad_weight_decay=0.0, grad_l1_penalty=0.0,
-                 lamb=1.0, **kwargs):
+    def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
+                 grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, **kwargs):
         super(PenalizeLastLayerGeneralForm, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
-            'pretrained_vae_path': pretrained_vae_path,
+            'pretrained_arg': pretrained_arg,
             'device': device,
-            'freeze_pretrained_parts': freeze_pretrained_parts,
             'grad_weight_decay': grad_weight_decay,
             'grad_l1_penalty': grad_l1_penalty,
             'lamb': lamb,
@@ -273,9 +264,8 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
         assert len(input_shape) == 3
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
-        self.pretrained_vae_path = pretrained_vae_path
+        self.pretrained_arg = pretrained_arg
         self.device = device
-        self.freeze_pretrained_parts = freeze_pretrained_parts
         self.grad_weight_decay = grad_weight_decay
         self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
@@ -292,23 +282,19 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
                                                      self.num_classes,
                                                      bias=False).to(self.device)
 
-        self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
-                                                          input_shape=self.input_shape)
-        self.q_base = self.q_base.to(self.device)
+        if self.pretrained_arg is not None:
+            self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
+            q_base_shape = self.q_base.output_shape
+        else:
+            self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                              input_shape=self.input_shape)
+            self.q_base = self.q_base.to(self.device)
 
         # TODO: parametrize better. Takes (r(x), z), outputs matrix.
         self.q_top = torch.nn.Sequential(
             torch.nn.Linear(q_base_shape[-1] + self.last_layer_dim, 128),
             torch.nn.ReLU(inplace=True),
             torch.nn.Linear(128, self.num_classes * self.last_layer_dim)).to(self.device)
-
-        if pretrained_vae_path is not None:
-            # use the vae encoder weights to initialize corresponding q_base
-            vae = utils.load(self.pretrained_vae_path, self.device)
-            self.q_base.load_state_dict(vae.encoder.net.state_dict(), strict=False)
-            q_base_params = dict(self.q_base.named_parameters())
-            for name, param in vae.encoder.net.named_parameters():
-                q_base_params[name].requires_grad = not freeze_pretrained_parts
 
         print(self)
 
@@ -384,17 +370,15 @@ class PredictGradOutputFixedForm(BaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     The q network uses the form of output gradients.
     """
-    def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
-                 freeze_pretrained_parts=True, grad_weight_decay=0.0, grad_l1_penalty=0.0,
-                 lamb=1.0, **kwargs):
+    def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
+                 grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, **kwargs):
         super(PredictGradOutputFixedForm, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
-            'pretrained_vae_path': pretrained_vae_path,
+            'pretrained_arg': pretrained_arg,
             'device': device,
-            'freeze_pretrained_parts': freeze_pretrained_parts,
             'grad_weight_decay': grad_weight_decay,
             'grad_l1_penalty': grad_l1_penalty,
             'lamb': 'lamb',
@@ -404,9 +388,8 @@ class PredictGradOutputFixedForm(BaseClassifier):
         assert len(input_shape) == 3
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
-        self.pretrained_vae_path = pretrained_vae_path
+        self.pretrained_arg = pretrained_arg
         self.device = device
-        self.freeze_pretrained_parts = freeze_pretrained_parts
         self.grad_weight_decay = grad_weight_decay
         self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
@@ -417,22 +400,18 @@ class PredictGradOutputFixedForm(BaseClassifier):
         self.classifier = self.classifier.to(self.device)
         self.num_classes = self.architecture_args['classifier'][-1]['dim']
 
-        self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
-                                                          input_shape=self.input_shape)
-        self.q_base = self.q_base.to(self.device)
+        if self.pretrained_arg is not None:
+            self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
+            q_base_shape = self.q_base.output_shape
+        else:
+            self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                              input_shape=self.input_shape)
+            self.q_base = self.q_base.to(self.device)
 
         self.q_top = torch.nn.Sequential(
             torch.nn.Linear(q_base_shape[-1], 128),
             torch.nn.ReLU(inplace=True),
             torch.nn.Linear(128, self.num_classes)).to(self.device)
-
-        if pretrained_vae_path is not None:
-            # use the vae encoder weights to initialize corresponding q_base
-            vae = utils.load(self.pretrained_vae_path, self.device)
-            self.q_base.load_state_dict(vae.encoder.net.state_dict(), strict=False)
-            q_base_params = dict(self.q_base.named_parameters())
-            for name, param in vae.encoder.net.named_parameters():
-                q_base_params[name].requires_grad = not freeze_pretrained_parts
 
         print(self)
 
@@ -517,17 +496,15 @@ class PredictGradOutputGeneralForm(BaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     The q network has general form.
     """
-    def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
-                 freeze_pretrained_parts=True, grad_weight_decay=0.0, grad_l1_penalty=0.0,
-                 lamb=1.0, **kwargs):
+    def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
+                 grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, **kwargs):
         super(PredictGradOutputGeneralForm, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
-            'pretrained_vae_path': pretrained_vae_path,
+            'pretrained_arg': pretrained_arg,
             'device': device,
-            'freeze_pretrained_parts': freeze_pretrained_parts,
             'grad_weight_decay': grad_weight_decay,
             'grad_l1_penalty': grad_l1_penalty,
             'lamb': 'lamb',
@@ -537,9 +514,8 @@ class PredictGradOutputGeneralForm(BaseClassifier):
         assert len(input_shape) == 3
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
-        self.pretrained_vae_path = pretrained_vae_path
+        self.pretrained_arg = pretrained_arg
         self.device = device
-        self.freeze_pretrained_parts = freeze_pretrained_parts
         self.grad_weight_decay = grad_weight_decay
         self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
@@ -550,9 +526,13 @@ class PredictGradOutputGeneralForm(BaseClassifier):
         self.classifier = self.classifier.to(self.device)
         self.num_classes = self.architecture_args['classifier'][-1]['dim']
 
-        self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
-                                                          input_shape=self.input_shape)
-        self.q_base = self.q_base.to(self.device)
+        if self.pretrained_arg is not None:
+            self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
+            q_base_shape = self.q_base.output_shape
+        else:
+            self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                              input_shape=self.input_shape)
+            self.q_base = self.q_base.to(self.device)
 
         # NOTE: we want to use classifier parameters too
         # TODO: find a good parametrization
@@ -560,14 +540,6 @@ class PredictGradOutputGeneralForm(BaseClassifier):
             torch.nn.Linear(q_base_shape[-1] + self.num_classes, 128),
             torch.nn.ReLU(inplace=True),
             torch.nn.Linear(128, self.num_classes)).to(self.device)
-
-        if pretrained_vae_path is not None:
-            # use the vae encoder weights to initialize corresponding q_base
-            vae = utils.load(self.pretrained_vae_path, self.device)
-            self.q_base.load_state_dict(vae.encoder.net.state_dict(), strict=False)
-            q_base_params = dict(self.q_base.named_parameters())
-            for name, param in vae.encoder.net.named_parameters():
-                q_base_params[name].requires_grad = not freeze_pretrained_parts
 
         print(self)
 
@@ -654,17 +626,15 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     The q network has general form and uses label information.
     """
-    def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
-                 freeze_pretrained_parts=True, grad_weight_decay=0.0, grad_l1_penalty=0.0,
-                 lamb=1.0, **kwargs):
+    def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
+                 grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, **kwargs):
         super(PredictGradOutputGeneralFormUseLabel, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
-            'pretrained_vae_path': pretrained_vae_path,
             'device': device,
-            'freeze_pretrained_parts': freeze_pretrained_parts,
+            'pretrained_arg': pretrained_arg,
             'grad_weight_decay': grad_weight_decay,
             'grad_l1_penalty': grad_l1_penalty,
             'lamb': 'lamb',
@@ -674,9 +644,8 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
         assert len(input_shape) == 3
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
-        self.pretrained_vae_path = pretrained_vae_path
+        self.pretrained_arg = pretrained_arg
         self.device = device
-        self.freeze_pretrained_parts = freeze_pretrained_parts
         self.grad_weight_decay = grad_weight_decay
         self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
@@ -687,9 +656,13 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
         self.classifier = self.classifier.to(self.device)
         self.num_classes = self.architecture_args['classifier'][-1]['dim']
 
-        self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
-                                                          input_shape=self.input_shape)
-        self.q_base = self.q_base.to(self.device)
+        if self.pretrained_arg is not None:
+            self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
+            q_base_shape = self.q_base.output_shape
+        else:
+            self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                              input_shape=self.input_shape)
+            self.q_base = self.q_base.to(self.device)
 
         # NOTE: we want to use classifier parameters too
         # TODO: find a good parametrization
@@ -697,14 +670,6 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
             torch.nn.Linear(q_base_shape[-1] + 2 * self.num_classes, 128),
             torch.nn.ReLU(inplace=True),
             torch.nn.Linear(128, self.num_classes)).to(self.device)
-
-        if pretrained_vae_path is not None:
-            # use the vae encoder weights to initialize corresponding q_base
-            vae = utils.load(self.pretrained_vae_path, self.device)
-            self.q_base.load_state_dict(vae.encoder.net.state_dict(), strict=False)
-            q_base_params = dict(self.q_base.named_parameters())
-            for name, param in vae.encoder.net.named_parameters():
-                q_base_params[name].requires_grad = not freeze_pretrained_parts
 
         print(self)
 
@@ -766,8 +731,8 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
         return batch_losses, info
 
     def visualize(self, train_loader, val_loader, tensorboard=None, epoch=None, **kwargs):
-        visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader,
-                                                                           tensorboard, epoch)
+        visualizations = super(PredictGradOutputGeneralFormUseLabel, self).visualize(train_loader, val_loader,
+                                                                                     tensorboard, epoch)
 
         # gradient norm tensorboard histograms
         if tensorboard is not None:
@@ -784,180 +749,3 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
                 visualizations['gradients/val-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
 
         return visualizations
-
-
-# TODO: use weights when predicting gradients
-# TODO: use deep supervision
-# TODO: look at the scale of the predicted gradients
-# TODO: add gradient visualizations
-class PredictGradOutputMetaLearning(BaseClassifier):
-    """ Trains the classifier using predicted gradients. The gradient predictor has general form and
-    we train it using meta learning type objective.
-    """
-    def __init__(self, input_shape, architecture_args, pretrained_vae_path, device='cuda',
-                 freeze_pretrained_parts=True, grad_weight_decay=0.0, nsteps=1, **kwargs):
-        super(PredictGradOutputMetaLearning, self).__init__(**kwargs)
-
-        self.args = {
-            'input_shape': input_shape,
-            'architecture_args': architecture_args,
-            'pretrained_vae_path': pretrained_vae_path,
-            'device': device,
-            'freeze_pretrained_parts': freeze_pretrained_parts,
-            'grad_weight_decay': grad_weight_decay,
-            'nsteps': nsteps,
-            'class': 'PredictGradOutputMetaLearning'
-        }
-
-        assert len(input_shape) == 3
-        self.input_shape = [None] + list(input_shape)
-        self.architecture_args = architecture_args
-        self.pretrained_vae_path = pretrained_vae_path
-        self.device = device
-        self.freeze_pretrained_parts = freeze_pretrained_parts
-        self.grad_weight_decay = grad_weight_decay
-        self.nsteps = nsteps
-        self.grad_diff_coef = 100.0
-
-        # initialize the network
-        vae = utils.load(self.pretrained_vae_path, self.device)
-        self.encoder = vae.encoder
-        if self.freeze_pretrained_parts:
-            utils.set_requires_grad(self.encoder, False)
-        else:
-            # resent the encoder parameters
-            self.encoder.train()
-            for layer in self.encoder.children():
-                if hasattr(layer, 'reset_parameters'):
-                    layer.reset_parameters()
-
-        self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                   input_shape=self.input_shape)
-        self.classifier = self.classifier.to(self.device)
-        self.num_classes = self.architecture_args['classifier'][-1]['dim']
-
-        self.grad_predictor = torch.nn.Linear(vae.hidden_shape[-1], self.num_classes).to(self.device)
-
-        print(self)
-
-    def forward(self, inputs, grad_enabled=False, **kwargs):
-        torch.set_grad_enabled(grad_enabled)
-
-        x = inputs[0].to(self.device)
-
-        # predict the gradient wrt to logits
-        rx_params = self.encoder(x)
-        rx = self.encoder.mean(rx_params)
-        grad_pred = self.grad_predictor(rx)
-
-        out = {
-            'grad_pred': grad_pred
-        }
-
-        return out
-
-    def compute_loss(self, inputs, labels, grad_enabled, **kwargs):
-        torch.set_grad_enabled(grad_enabled)
-
-        info = self.forward(inputs=inputs, grad_enabled=grad_enabled)
-        grad_pred = info['grad_pred']
-
-        x = inputs[0].to(self.device)
-        y = labels[0].to(self.device)
-        y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
-
-        # ====================== meta-training ======================
-        # detach classifier params and initialize again
-        # TODO: learn initial weights?
-        self.classifier.zero_grad()
-        for param in self.classifier.parameters():
-            param.detach_()
-            param.requires_grad_()
-        # TODO: maybe always initialize to the same value?
-        # TODO: reset?
-        # for layer in self.classifier.children():
-        #     if hasattr(layer, 'reset_parameters'):
-        #         layer.reset_parameters()
-
-        torch.set_grad_enabled(True)  # enable tracking if it is disabled
-        lr = 0.0001  # TODO: tune or learn?
-        chunk_size = x.shape[0] // (self.nsteps + 1)
-
-        for idx in range(self.nsteps):
-            start = chunk_size * idx
-            end = start + chunk_size
-
-            # compute classifier predictions
-            pred_before = self.classifier(x[start:end])
-
-            # to replace the gradients later we use the following trick
-            # this ensures that when we take gradient wrt to pred our
-            # predicted grad_pred will be returned
-            pred = nn.GradReplacement.apply(pred_before, grad_pred[start:end])
-
-            # compute all gradients with respect to classifier parameters
-            # and do a single stochastic gradient descent update
-            classifier_loss = F.cross_entropy(input=pred, target=y[start:end])
-            classifier_grads = torch.autograd.grad(classifier_loss, self.classifier.parameters(),
-                                                   create_graph=True)
-
-            updated_state_dict = dict()
-            for (param_name, param), grad in zip(list(self.classifier.named_parameters()),
-                                                 classifier_grads):
-                updated_state_dict[param_name] = param - lr * grad
-
-            for param_full_name, param in updated_state_dict.items():
-                module_id = param_full_name[:param_full_name.index('.')]
-                param_name = param_full_name[param_full_name.find('.') + 1:]
-                self.classifier._modules[module_id]._parameters.pop(param_name)
-                self.classifier._modules[module_id]._parameters[param_name] = param
-
-        # ====================== meta-testing ======================
-        torch.set_grad_enabled(grad_enabled)
-        start = self.nsteps * chunk_size
-        end = x.shape[0]
-
-        # compute final classifier loss
-        pred_before = self.classifier(x)
-        pred = nn.GradReplacement.apply(pred_before, grad_pred)
-        info['pred'] = pred_before  # for computing accuracy-like statistics
-
-        # classifier loss on the last chunk
-        classifier_loss = F.cross_entropy(input=pred[start:end], target=y[start:end])
-
-        # help the method by saying that it should output cross-entropy like gradients
-        grad_diff_loss = self.grad_diff_coef * losses.mse(grad_pred,
-                                                          torch.softmax(pred_before.detach(), dim=1) - y_one_hot)
-
-        batch_losses = {
-            'classifier': classifier_loss,
-            'grad_diff': grad_diff_loss
-        }
-
-        # add predicted gradient norm penalty
-        if self.grad_weight_decay > 0:
-            grad_l2_loss = self.grad_weight_decay *\
-                           torch.mean(torch.sum(grad_pred**2, dim=1))
-            batch_losses['grad_l2'] = grad_l2_loss
-
-        return batch_losses, info
-
-    def on_iteration_end(self, info, batch_labels, partition, tensorboard, **kwargs):
-        super(PredictGradOutputMetaLearning, self).on_iteration_end(info=info, batch_labels=batch_labels,
-                                                                    partition=partition, **kwargs)
-        # track some additional statistics
-        grad_pred = info['grad_pred']
-
-        tensorboard.add_scalar('stats/{}_pred_grad_norm'.format(partition),
-                               torch.sum(grad_pred**2, dim=1).mean(),
-                               self._current_iteration[partition])
-
-    def on_epoch_end(self, partition, tensorboard, epoch, **kwargs):
-        super(PredictGradOutputMetaLearning, self).on_epoch_end(partition=partition,
-                                                                epoch=epoch,
-                                                                tensorboard=tensorboard)
-        self.grad_diff_coef *= 0.9
-        if partition == 'train':
-            tensorboard.add_scalar('hyperparameters/grad_diff_coef',
-                                   self.grad_diff_coef,
-                                   epoch)
