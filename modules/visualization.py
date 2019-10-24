@@ -232,6 +232,7 @@ def pred_gradient_norm_histogram(model, data_loader, tensorboard, epoch, name, m
                                        output_keys_regexp='grad_pred', description='grad-histogram:grad_pred',
                                        max_num_examples=max_num_examples)['grad_pred']
     grad_norms = torch.sum(grad_pred**2, dim=-1)
+    grad_norms = utils.to_numpy(grad_norms)
     tensorboard.add_histogram(tag=name, values=grad_norms, global_step=epoch)
 
 
@@ -243,7 +244,7 @@ def pred_gradient_pair_scatter(model, data_loader, d1=0, d2=1, max_num_examples=
                                        output_keys_regexp='grad_pred',
                                        max_num_examples=max_num_examples,
                                        description='grad-pair-scatter:grad_pred')['grad_pred']
-
+    grad_pred = utils.to_numpy(grad_pred)
     fig, ax = plt.subplots(1, figsize=(5, 5))
     plt.scatter(grad_pred[:, d1], grad_pred[:, d2])
     ax.set_xlabel(str(d1))
