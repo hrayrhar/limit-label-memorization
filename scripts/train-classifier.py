@@ -29,10 +29,6 @@ def main():
     parser.set_defaults(transform_validation=True)
     parser.add_argument('--remove_prob', type=float, default=0.5)
 
-    parser.add_argument('--pretrained_vae_path', '-r', type=str, default=None)
-    parser.add_argument('--tune_pretrained_parts', dest='freeze_pretrained_parts', action='store_false')
-    parser.set_defaults(freeze_pretrained_parts=True)
-
     parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier',
                         choices=['StandardClassifier', 'PenalizeLastLayerFixedForm',
                                  'PenalizeLastLayerGeneralForm', 'PredictGradOutputFixedForm',
@@ -44,6 +40,7 @@ def main():
     parser.add_argument('--grad_l1_penalty', '-S', type=float, default=0.0)
     parser.add_argument('--lamb', type=float, default=1.0)
     parser.add_argument('--nsteps', type=int, default=1)
+    parser.add_argument('--pretrained_arg', '-r', type=str, default=None)
     args = parser.parse_args()
     print(args)
 
@@ -65,9 +62,8 @@ def main():
 
     model = model_class(input_shape=train_loader.dataset[0][0].shape,
                         architecture_args=architecture_args,
-                        pretrained_vae_path=args.pretrained_vae_path,
+                        pretrained_arg=args.pretrained_arg,
                         device=args.device,
-                        freeze_pretrained_parts=args.freeze_pretrained_parts,
                         grad_weight_decay=args.grad_weight_decay,
                         grad_l1_penalty=args.grad_l1_penalty,
                         lamb=args.lamb,
@@ -81,7 +77,8 @@ def main():
                    save_iter=args.save_iter,
                    vis_iter=args.vis_iter,
                    optimization_args=optimization_args,
-                   log_dir=args.log_dir)
+                   log_dir=args.log_dir,
+                   args_to_log=args)
 
     # do final visualizations
     if hasattr(model, 'visualize'):

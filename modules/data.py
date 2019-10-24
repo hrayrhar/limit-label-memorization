@@ -45,11 +45,17 @@ def create_remove_random_chunks_function(prob=0.5):
 
 
 def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, transform_function=None,
-                        transform_validation=False, seed=42):
+                        transform_validation=False, skip_normalization=False, seed=42):
     data_dir = os.path.join(os.path.dirname(__file__), '../data/mnist/')
 
-    train_data = datasets.MNIST(data_dir, download=True, train=True, transform=transforms.ToTensor())
-    test_data = datasets.MNIST(data_dir, download=True, train=False, transform=transforms.ToTensor())
+    all_transforms = [transforms.ToTensor()]
+    if not skip_normalization:
+        # NOTE: this normalization is set so that models pretrained on ImageNet work well
+        all_transforms.append(transforms.Normalize(mean=[0.456], std=[0.224]))
+    composed_transform = transforms.Compose(all_transforms)
+
+    train_data = datasets.MNIST(data_dir, download=True, train=True, transform=composed_transform)
+    test_data = datasets.MNIST(data_dir, download=True, train=False, transform=composed_transform)
     train_data, val_data = split(train_data, val_ratio, seed)
 
     train_data.dataset_name = 'mnist'
@@ -87,10 +93,10 @@ def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, transform_function=None,
 
 def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
                        drop_last=False, num_train_examples=None, transform_function=None,
-                       transform_validation=False):
+                       transform_validation=False, skip_normalization=False):
     train_data, val_data, test_data, _ = load_mnist_datasets(
         val_ratio=val_ratio, noise_level=noise_level, transform_function=transform_function,
-        transform_validation=transform_validation, seed=seed)
+        transform_validation=transform_validation, skip_normalization=skip_normalization, seed=seed)
 
     if num_train_examples is not None:
         subset = np.random.choice(len(train_data), num_train_examples, replace=False)
@@ -106,11 +112,19 @@ def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
     return train_loader, val_loader, test_loader
 
 
-def load_cifar10_datasets(val_ratio=0.2, noise_level=0.0, seed=42):
+def load_cifar10_datasets(val_ratio=0.2, noise_level=0.0, skip_normalization=False, seed=42):
     data_dir = os.path.join(os.path.dirname(__file__), '../data/cifar10/')
 
-    train_data = datasets.CIFAR10(data_dir, download=True, train=True, transform=transforms.ToTensor())
-    test_data = datasets.CIFAR10(data_dir, download=True, train=False, transform=transforms.ToTensor())
+    all_transforms = [transforms.ToTensor()]
+    if not skip_normalization:
+        # NOTE: this normalization is set so that models pretrained on ImageNet work well
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                         std=[0.229, 0.224, 0.225])
+        all_transforms.append(normalize)
+    composed_transform = transforms.Compose(all_transforms)
+
+    train_data = datasets.CIFAR10(data_dir, download=True, train=True, transform=composed_transform)
+    test_data = datasets.CIFAR10(data_dir, download=True, train=False, transform=composed_transform)
     train_data, val_data = split(train_data, val_ratio, seed)
 
     train_data.dataset_name = 'cifar10'
@@ -132,9 +146,11 @@ def load_cifar10_datasets(val_ratio=0.2, noise_level=0.0, seed=42):
 
 
 def load_cifar10_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
-                         drop_last=False, num_train_examples=None):
+                         drop_last=False, num_train_examples=None, skip_normalization=False):
     train_data, val_data, test_data, _ = load_cifar10_datasets(val_ratio=val_ratio,
-                                                               noise_level=noise_level, seed=seed)
+                                                               noise_level=noise_level,
+                                                               skip_normalization=skip_normalization,
+                                                               seed=seed)
 
     if num_train_examples is not None:
         subset = np.random.choice(len(train_data), num_train_examples, replace=False)
@@ -150,7 +166,7 @@ def load_cifar10_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42
     return train_loader, val_loader, test_loader
 
 
-def load_data_from_arguments(args):
+def load_data_from_arguments(args, skip_normalization=False):
     """ Helper method for loading data from arguments.
     """
     transform_function = None
@@ -162,12 +178,14 @@ def load_data_from_arguments(args):
             batch_size=args.batch_size, noise_level=args.noise_level,
             transform_function=transform_function,
             transform_validation=args.transform_validation,
-            num_train_examples=args.num_train_examples)
+            num_train_examples=args.num_train_examples,
+            skip_normalization=skip_normalization)
 
     if args.dataset == 'cifar10':
         train_loader, val_loader, test_loader = load_cifar10_loaders(
             batch_size=args.batch_size, noise_level=args.noise_level,
-            num_train_examples=args.num_train_examples)
+            num_train_examples=args.num_train_examples,
+            skip_normalization=skip_normalization)
 
     example_shape = train_loader.dataset[0][0].shape
     print("Dataset is loaded:\n\ttrain_samples: {}\n\tval_samples: {}\n\t"

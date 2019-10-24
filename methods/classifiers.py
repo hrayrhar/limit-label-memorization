@@ -1,5 +1,5 @@
 from collections import defaultdict
-from modules import nn, utils, losses
+from modules import nn, utils, losses, pretrained_models
 from modules import visualization as vis
 import numpy as np
 import torch
@@ -56,18 +56,17 @@ class BaseClassifier(torch.nn.Module):
 
 class StandardClassifier(BaseClassifier):
     """ Standard classifier trained with cross-entropy loss.
-    Has an option to use a pretrained VAE as feature extractor.
+    Has an option to work on pretrained representation of x.
     """
-    def __init__(self, input_shape, architecture_args, pretrained_vae_path=None,
-                 freeze_pretrained_parts=False, device='cuda', loss_function='ce',
+    def __init__(self, input_shape, architecture_args, pretrained_arg=False,
+                 device='cuda', loss_function='ce',
                  **kwargs):
         super(StandardClassifier, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
             'architecture_args': architecture_args,
-            'pretrained_vae_path': pretrained_vae_path,
-            'freeze_pretrained_parts': freeze_pretrained_parts,
+            'pretrained_arg': pretrained_arg,
             'device': device,
             'loss_function': loss_function,
             'class': 'StandardClassifier'
@@ -76,23 +75,17 @@ class StandardClassifier(BaseClassifier):
         assert len(input_shape) == 3
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
-        self.pretrained_vae_path = pretrained_vae_path
+        self.pretrained_arg = pretrained_arg
         self.device = device
         self.loss_function = loss_function
 
         # initialize the network
+        self.repr_net = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
+        self.repr_shape = self.repr_net.output_shape
         self.classifier, output_shape = nn.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                              input_shape=self.input_shape)
+                                                              input_shape=self.repr_shape)
         self.num_classes = output_shape[-1]
         self.classifier = self.classifier.to(self.device)
-
-        if pretrained_vae_path is not None:
-            # use the vae encoder weights to initialize corresponding layers of the classifier
-            vae = utils.load(self.pretrained_vae_path, self.device)
-            self.classifier.load_state_dict(vae.encoder.net.state_dict(), strict=False)
-            classifier_params = dict(self.classifier.named_parameters())
-            for name, param in vae.encoder.net.named_parameters():
-                classifier_params[name].requires_grad = not freeze_pretrained_parts
 
         print(self)
 
@@ -101,7 +94,7 @@ class StandardClassifier(BaseClassifier):
         x = inputs[0].to(self.device)
 
         out = {
-            'pred': self.classifier(x),
+            'pred': self.classifier(self.repr_net(x)),
         }
 
         return out

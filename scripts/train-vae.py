@@ -33,7 +33,7 @@ def main():
     print(args)
 
     # Load data
-    train_loader, val_loader, test_loader = datasets.load_data_from_arguments(args)
+    train_loader, val_loader, test_loader = datasets.load_data_from_arguments(args, skip_normalization=True)
 
     # Options
     optimization_args = {
