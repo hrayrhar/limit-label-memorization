@@ -7,6 +7,7 @@ possible to use these tools in both jupyter notebooks and in ordinary scripts.
 import torch.nn.functional as F
 from sklearn.manifold import TSNE
 from modules import utils
+from modules.data import revert_normalization
 import numpy as np
 import os
 import torch
@@ -254,6 +255,51 @@ def pred_gradient_pair_scatter(model, data_loader, d1=0, d2=1, max_num_examples=
     # ax.set_xlim(L[d1], R[d1])
     # ax.set_ylim(L[d2], R[d2])
     ax.set_title('Two coordinates of grad wrt to logits')
+    return fig, plt
+
+
+def plot_confusion_matrix(Q, plt=None):
+    if plt is None:
+        plt = matplotlib.pyplot
+    num_classes = Q.shape[0]
+    fig, ax = plt.subplots(1, figsize=(5, 5))
+    im = ax.imshow(utils.to_numpy(Q))
+    fig.colorbar(im)
+    ax.set_xticks(range(num_classes))
+    ax.set_yticks(range(num_classes))
+    ax.set_xlabel('observed')
+    ax.set_ylabel('true')
+    return fig, plt
+
+
+def plot_predictions(model, data_loader, key, plt=None):
+    if plt is None:
+        plt = matplotlib.pyplot
+    model.eval()
+
+    n_examples = 10
+    pred = utils.apply_on_dataset(model=model, dataset=data_loader.dataset,
+                                  output_keys_regexp=key,
+                                  max_num_examples=n_examples,
+                                  description='plot_predictions:{}'.format(key))[key]
+    probs = torch.softmax(pred, dim=1)
+    probs = utils.to_numpy(probs)
+
+    data = [data_loader.dataset[i][0] for i in range(n_examples)]
+    labels = [data_loader.dataset[i][1] for i in range(n_examples)]
+    samples = torch.stack(data, dim=0)
+    samples = revert_normalization(samples, data_loader.dataset)
+    samples = utils.to_numpy(samples)
+
+    fig, ax = plt.subplots(nrows=n_examples, ncols=2, figsize=(2*2, 2*n_examples))
+    for i in range(n_examples):
+        ax[i][0].imshow(get_image(samples[i]), vmin=0, vmax=1)
+        ax[i][0].set_axis_off()
+        ax[i][0].set_title('labels as {}'.format(labels[i]))
+
+        ax[i][1].bar(range(model.num_classes), probs[i])
+        ax[i][1].set_xticks(range(model.num_classes))
+
     return fig, plt
 
 
