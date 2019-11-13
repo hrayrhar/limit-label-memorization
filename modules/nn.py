@@ -148,6 +148,26 @@ def parse_feed_forward(args, input_shape):
     return nn.Sequential(*net), output_shape
 
 
+def get_grad_replacement_class(sample=False, standard_dev=None):
+    if not sample:
+        return GradReplacement
+
+    # otherwise need to define a class that can sample gradients
+    class GradReplacementWithSampling(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, pred, grad_wrt_logits):
+            ctx.save_for_backward(grad_wrt_logits)
+            return pred
+
+        @staticmethod
+        def backward(ctx, grad_output):
+            grad_wrt_logits = ctx.saved_tensors[0]
+            eps = torch.randn(size=grad_wrt_logits.shape, device=grad_wrt_logits.device)
+            return grad_wrt_logits + standard_dev * eps, torch.zeros_like(grad_wrt_logits)
+
+    return GradReplacementWithSampling
+
+
 class GradReplacement(torch.autograd.Function):
     """ Identity function that gets x and grad_wrt_x and returns x,
     but when returning gradients, returns the given grad_wrt_x instead
@@ -163,6 +183,8 @@ class GradReplacement(torch.autograd.Function):
     def backward(ctx, grad_output):
         grad_wrt_logits = ctx.saved_tensors[0]
         return grad_wrt_logits, torch.zeros_like(grad_wrt_logits)
+
+
 
 
 # Conditional distributions should return list of parameters.
