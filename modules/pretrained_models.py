@@ -62,7 +62,7 @@ class PretrainedMNISTVAE(torch.nn.Module):
 
 class Identity(torch.nn.Module):
     def __init__(self, input_shape):
-        super(Identity, self).__int__()
+        super(Identity, self).__init__()
         self.output_shape = input_shape
 
     def forward(self, x):
