@@ -44,23 +44,31 @@ def create_remove_random_chunks_function(prob=0.5):
     return modify
 
 
+def revert_normalization(samples, dataset):
+    means, stds = dataset.statistics
+    return (samples * stds.unsqueeze(dim=0).unsqueeze(dim=2).unsqueeze(dim=3) +
+            means.unsqueeze(dim=0).unsqueeze(dim=2).unsqueeze(dim=3))
+
+
 def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, transform_function=None,
                         transform_validation=False, skip_normalization=False, seed=42):
     data_dir = os.path.join(os.path.dirname(__file__), '../data/mnist/')
 
     all_transforms = [transforms.ToTensor()]
+    means = torch.tensor([0.456])
+    stds = torch.tensor([0.224])
     if not skip_normalization:
         # NOTE: this normalization is set so that models pretrained on ImageNet work well
-        all_transforms.append(transforms.Normalize(mean=[0.456], std=[0.224]))
+        all_transforms.append(transforms.Normalize(mean=means, std=stds))
     composed_transform = transforms.Compose(all_transforms)
 
     train_data = datasets.MNIST(data_dir, download=True, train=True, transform=composed_transform)
     test_data = datasets.MNIST(data_dir, download=True, train=False, transform=composed_transform)
     train_data, val_data = split(train_data, val_ratio, seed)
 
-    train_data.dataset_name = 'mnist'
-    val_data.dataset_name = 'mnist'
-    test_data.dataset_name = 'mnist'
+    for dataset in [train_data, val_data, test_data]:
+        dataset.dataset_name = 'mnist'
+        dataset.statistics = (means, stds)
 
     # corrupt noise_level percent of the training labels
     is_corrupted = np.zeros(len(train_data), dtype=int)  # 0 clean, 1 corrupted, 2 accidentally correct
@@ -116,20 +124,20 @@ def load_cifar10_datasets(val_ratio=0.2, noise_level=0.0, skip_normalization=Fal
     data_dir = os.path.join(os.path.dirname(__file__), '../data/cifar10/')
 
     all_transforms = [transforms.ToTensor()]
+    means = torch.tensor([0.485, 0.456, 0.406])
+    stds = torch.tensor([0.229, 0.224, 0.225])
     if not skip_normalization:
         # NOTE: this normalization is set so that models pretrained on ImageNet work well
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                         std=[0.229, 0.224, 0.225])
-        all_transforms.append(normalize)
+        all_transforms.append(transforms.Normalize(mean=means, std=stds))
     composed_transform = transforms.Compose(all_transforms)
 
     train_data = datasets.CIFAR10(data_dir, download=True, train=True, transform=composed_transform)
     test_data = datasets.CIFAR10(data_dir, download=True, train=False, transform=composed_transform)
     train_data, val_data = split(train_data, val_ratio, seed)
 
-    train_data.dataset_name = 'cifar10'
-    val_data.dataset_name = 'cifar10'
-    test_data.dataset_name = 'cifar10'
+    for dataset in [train_data, val_data, test_data]:
+        dataset.dataset_name = 'cifar10'
+        dataset.statistics = (means, stds)
 
     # corrupt noise_level percent of the training labels
     is_corrupted = np.zeros(len(train_data), dtype=int)  # 0 clean, 1 corrupted, 2 accidentally correct
