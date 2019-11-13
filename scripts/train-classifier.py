@@ -32,13 +32,18 @@ def main():
     parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier',
                         choices=['StandardClassifier', 'PenalizeLastLayerFixedForm',
                                  'PenalizeLastLayerGeneralForm', 'PredictGradOutputFixedForm',
-                                 'PredictGradOutputGeneralForm', 'PredictGradOutputGeneralFormUseLabel'])
+                                 'PredictGradOutputGeneralForm', 'PredictGradOutputGeneralFormUseLabel',
+                                 'PredictGradOutputFixedFormWithConfusion'])
     parser.add_argument('--loss_function', type=str, default='ce',
                         choices=['ce', 'mse', 'mad'])
     parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
     parser.add_argument('--grad_l1_penalty', '-S', type=float, default=0.0)
     parser.add_argument('--lamb', type=float, default=1.0)
     parser.add_argument('--pretrained_arg', '-r', type=str, default=None)
+    parser.add_argument('--small_qtop', action='store_true', dest='small_qtop')
+    parser.add_argument('--sample_from_q', action='store_true', dest='sample_from_q')
+    parser.set_defaults(small_qtop=False)
+    parser.set_defaults(sample_from_q=False)
     args = parser.parse_args()
     print(args)
 
@@ -65,6 +70,8 @@ def main():
                         grad_weight_decay=args.grad_weight_decay,
                         grad_l1_penalty=args.grad_l1_penalty,
                         lamb=args.lamb,
+                        small_qtop=args.small_qtop,
+                        sample_from_q=args.sample_from_q,
                         loss_function=args.loss_function)
 
     training.train(model=model,

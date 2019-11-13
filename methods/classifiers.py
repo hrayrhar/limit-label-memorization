@@ -44,12 +44,20 @@ class BaseClassifier(torch.nn.Module):
                 vis.ce_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-ce-grad')
 
         # add gradient pair plots
-        for p in [(0, 1), (4, 9)]:
-            fig, _ = vis.ce_gradient_pair_scatter(self, train_loader, d1=p[0], d2=p[1])
-            visualizations['gradients/train-ce-scatter-{}-{}'.format(p[0], p[1])] = fig
-            if val_loader is not None:
-                fig, _ = vis.ce_gradient_pair_scatter(self, val_loader, d1=p[0], d2=p[1])
-                visualizations['gradients/val-ce-scatter-{}-{}'.format(p[0], p[1])] = fig
+        if train_loader.dataset.dataset_name == 'mnist':
+            for p in [(0, 1), (4, 9)]:
+                fig, _ = vis.ce_gradient_pair_scatter(self, train_loader, d1=p[0], d2=p[1])
+                visualizations['gradients/train-ce-scatter-{}-{}'.format(p[0], p[1])] = fig
+                if val_loader is not None:
+                    fig, _ = vis.ce_gradient_pair_scatter(self, val_loader, d1=p[0], d2=p[1])
+                    visualizations['gradients/val-ce-scatter-{}-{}'.format(p[0], p[1])] = fig
+
+        # visualize pred
+        fig, _ = vis.plot_predictions(self, train_loader, key='pred')
+        visualizations['predictions/pred-train'] = fig
+        if val_loader is not None:
+            fig, _ = vis.plot_predictions(self, val_loader, key='pred')
+            visualizations['predictions/pred-val'] = fig
 
         return visualizations
 
@@ -366,12 +374,41 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
                                self._current_iteration[partition])
 
 
-class PredictGradOutputFixedForm(BaseClassifier):
+class PredictGradBaseClassifier(BaseClassifier):
+    """ Abstract class for gradient prediction approaches.
+    """
+    def __init__(self, **kwargs):
+        super(PredictGradBaseClassifier, self).__init__(**kwargs)
+
+    def visualize(self, train_loader, val_loader, tensorboard=None, epoch=None, **kwargs):
+        visualizations = super(PredictGradBaseClassifier, self).visualize(
+            train_loader, val_loader, tensorboard, epoch)
+
+        # gradient norm tensorboard histograms
+        if tensorboard is not None:
+            vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
+            if val_loader is not None:
+                vis.pred_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-pred-grad')
+
+        # add gradient pair plots
+        if train_loader.dataset.dataset_name == 'mnist':
+            for p in [(0, 1), (4, 9)]:
+                fig, _ = vis.pred_gradient_pair_scatter(self, train_loader, d1=p[0], d2=p[1])
+                visualizations['gradients/train-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
+                if val_loader is not None:
+                    fig, _ = vis.pred_gradient_pair_scatter(self, val_loader, d1=p[0], d2=p[1])
+                    visualizations['gradients/val-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
+
+        return visualizations
+
+
+class PredictGradOutputFixedForm(PredictGradBaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     The q network uses the form of output gradients.
     """
     def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
-                 grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, **kwargs):
+                 grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, small_qtop=False,
+                 sample_from_q=False, **kwargs):
         super(PredictGradOutputFixedForm, self).__init__(**kwargs)
 
         self.args = {
@@ -382,6 +419,8 @@ class PredictGradOutputFixedForm(BaseClassifier):
             'grad_weight_decay': grad_weight_decay,
             'grad_l1_penalty': grad_l1_penalty,
             'lamb': 'lamb',
+            'small_qtop': small_qtop,
+            'sample_from_q': sample_from_q,
             'class': 'PredictGradOutputFixedForm'
         }
 
@@ -393,12 +432,16 @@ class PredictGradOutputFixedForm(BaseClassifier):
         self.grad_weight_decay = grad_weight_decay
         self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
+        self.small_qtop = small_qtop
+        self.sample_from_q = sample_from_q
+        self.grad_replacement_class = nn.get_grad_replacement_class(
+            sample=self.sample_from_q, standard_dev=np.sqrt(1.0 / 2.0 / (self.lamb + 1e-12)))
 
         # initialize the network
-        self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                   input_shape=self.input_shape)
+        self.classifier, output_shape = nn.parse_feed_forward(args=self.architecture_args['classifier'],
+                                                              input_shape=self.input_shape)
         self.classifier = self.classifier.to(self.device)
-        self.num_classes = self.architecture_args['classifier'][-1]['dim']
+        self.num_classes = output_shape[-1]
 
         if self.pretrained_arg is not None:
             self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
@@ -408,10 +451,13 @@ class PredictGradOutputFixedForm(BaseClassifier):
                                                               input_shape=self.input_shape)
             self.q_base = self.q_base.to(self.device)
 
-        self.q_top = torch.nn.Sequential(
-            torch.nn.Linear(q_base_shape[-1], 128),
-            torch.nn.ReLU(inplace=True),
-            torch.nn.Linear(128, self.num_classes)).to(self.device)
+        if small_qtop:
+            self.q_top = torch.nn.Linear(q_base_shape[-1], self.num_classes).to(self.device)
+        else:
+            self.q_top = torch.nn.Sequential(
+                torch.nn.Linear(q_base_shape[-1], 128),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.Linear(128, self.num_classes)).to(self.device)
 
         print(self)
 
@@ -427,7 +473,7 @@ class PredictGradOutputFixedForm(BaseClassifier):
         grad_pred = torch.softmax(pred, dim=1) - torch.softmax(q_label_pred, dim=1)
 
         # change the gradients
-        pred = nn.GradReplacement.apply(pred, grad_pred)
+        pred = self.grad_replacement_class.apply(pred, grad_pred)
 
         out = {
             'pred': pred,
@@ -475,30 +521,24 @@ class PredictGradOutputFixedForm(BaseClassifier):
         visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader,
                                                                            tensorboard, epoch)
 
-        # gradient norm tensorboard histograms
-        if tensorboard is not None:
-            vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
-            if val_loader is not None:
-                vis.pred_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-pred-grad')
-
-        # add gradient pair plots
-        for p in [(0, 1), (4, 9)]:
-            fig, _ = vis.pred_gradient_pair_scatter(self, train_loader, d1=p[0], d2=p[1])
-            visualizations['gradients/train-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
-            if val_loader is not None:
-                fig, _ = vis.pred_gradient_pair_scatter(self, val_loader, d1=p[0], d2=p[1])
-                visualizations['gradients/val-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
+        # visualize q_label_pred
+        fig, _ = vis.plot_predictions(self, train_loader, key='q_label_pred')
+        visualizations['predictions/q-label-pred-train'] = fig
+        if val_loader is not None:
+            fig, _ = vis.plot_predictions(self, val_loader, key='q_label_pred')
+            visualizations['predictions/q-label-pred-val'] = fig
 
         return visualizations
 
 
-class PredictGradOutputGeneralForm(BaseClassifier):
+class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
-    The q network has general form.
+    The q network uses the form of output gradients. A confusion matrix is also inferred.
     """
     def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
-                 grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, **kwargs):
-        super(PredictGradOutputGeneralForm, self).__init__(**kwargs)
+                 grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, small_qtop=False,
+                 sample_from_q=False, **kwargs):
+        super(PredictGradOutputFixedFormWithConfusion, self).__init__(**kwargs)
 
         self.args = {
             'input_shape': input_shape,
@@ -508,7 +548,9 @@ class PredictGradOutputGeneralForm(BaseClassifier):
             'grad_weight_decay': grad_weight_decay,
             'grad_l1_penalty': grad_l1_penalty,
             'lamb': 'lamb',
-            'class': 'PredictGradOutputGeneralForm'
+            'small_qtop': small_qtop,
+            'sample_from_q': sample_from_q,
+            'class': 'PredictGradOutputFixedFormWithConfusion'
         }
 
         assert len(input_shape) == 3
@@ -519,12 +561,16 @@ class PredictGradOutputGeneralForm(BaseClassifier):
         self.grad_weight_decay = grad_weight_decay
         self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
+        self.small_qtop = small_qtop
+        self.sample_from_q = sample_from_q
+        self.grad_replacement_class = nn.get_grad_replacement_class(
+            sample=self.sample_from_q, standard_dev=np.sqrt(1.0 / 2.0 / (self.lamb + 1e-12)))
 
         # initialize the network
-        self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                   input_shape=self.input_shape)
+        self.classifier, output_shape = nn.parse_feed_forward(args=self.architecture_args['classifier'],
+                                                              input_shape=self.input_shape)
         self.classifier = self.classifier.to(self.device)
-        self.num_classes = self.architecture_args['classifier'][-1]['dim']
+        self.num_classes = output_shape[-1]
 
         if self.pretrained_arg is not None:
             self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
@@ -534,12 +580,23 @@ class PredictGradOutputGeneralForm(BaseClassifier):
                                                               input_shape=self.input_shape)
             self.q_base = self.q_base.to(self.device)
 
-        # NOTE: we want to use classifier parameters too
-        # TODO: find a good parametrization
-        self.q_top = torch.nn.Sequential(
-            torch.nn.Linear(q_base_shape[-1] + self.num_classes, 128),
-            torch.nn.ReLU(inplace=True),
-            torch.nn.Linear(128, self.num_classes)).to(self.device)
+        if small_qtop:
+            self.q_top = torch.nn.Linear(q_base_shape[-1], self.num_classes).to(self.device)
+        else:
+            self.q_top = torch.nn.Sequential(
+                torch.nn.Linear(q_base_shape[-1], 128),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.Linear(128, self.num_classes)).to(self.device)
+
+        # the confusion matrix trainable logits, (true, observed)
+        Q_init = torch.zeros(size=(self.num_classes, self.num_classes), device=self.device, dtype=torch.float)
+        Q_init += 1.0 * torch.eye(self.num_classes, device=self.device, dtype=torch.float)  # TODO: tune the constant
+        self.Q_logits = torch.nn.Parameter(Q_init, requires_grad=True)
+
+        # Q_init = 0.09 * torch.ones(size=(self.num_classes, self.num_classes), device=self.device, dtype=torch.float)
+        # for i in range(self.num_classes):
+        #     Q_init[i, i] += 0.1
+        # self.Q_logits = torch.nn.Parameter(Q_init, requires_grad=False)
 
         print(self)
 
@@ -548,19 +605,23 @@ class PredictGradOutputGeneralForm(BaseClassifier):
         x = inputs[0].to(self.device)
 
         # compute classifier predictions
-        pred_before = self.classifier(x)
+        pred = self.classifier(x)
 
         # predict the gradient wrt to logits
-        rx = self.q_base(x)
-        grad_pred = self.q_top(torch.cat([rx, pred_before], dim=1))
+        q_label_pred = self.q_top(self.q_base(x))
+        grad_pred = torch.softmax(pred, dim=1) - torch.softmax(q_label_pred, dim=1)
 
         # change the gradients
-        pred = nn.GradReplacement.apply(pred_before, grad_pred)
+        pred = self.grad_replacement_class.apply(pred, grad_pred)
+
+        # confusion matrix with probabilities
+        Q = torch.softmax(self.Q_logits, dim=1)
 
         out = {
             'pred': pred,
-            'pred_before': pred_before,
-            'grad_pred': grad_pred
+            'q_label_pred': q_label_pred,
+            'grad_pred': grad_pred,
+            'Q': Q,
         }
 
         return out
@@ -570,9 +631,9 @@ class PredictGradOutputGeneralForm(BaseClassifier):
 
         info = self.forward(inputs=inputs, grad_enabled=grad_enabled)
         pred = info['pred']
-        pred_before = info['pred_before']
+        q_label_pred = info['q_label_pred']
         grad_pred = info['grad_pred']
-
+        Q = info['Q']
         y = labels[0].to(self.device)
         y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
 
@@ -580,8 +641,15 @@ class PredictGradOutputGeneralForm(BaseClassifier):
         classifier_loss = F.cross_entropy(input=pred, target=y)
 
         # I(g : y | x) penalty
-        grad_actual = torch.softmax(pred_before, dim=1) - y_one_hot
-        info_penalty = self.lamb * losses.mse(grad_actual, grad_pred)
+        q_label_probs = torch.softmax(q_label_pred, dim=1)
+        q_probs = torch.mm(q_label_probs, Q)
+        q_prob = torch.sum(q_probs * y_one_hot, dim=1)  # select the probability corresponding to the observed y
+        info_penalty = -self.lamb * torch.mean(torch.log(q_prob))
+
+        # entropy minimization of q_label_pred
+        # if there is no entropy minimization, it learns to set Q=Identity and make q_label_pred
+        # close to uniform, which minimizes the H_{p,q} = <q_probs, y_one_hot> term.
+        info_penalty -= 0.01 * torch.sum(q_label_probs * torch.log(q_label_probs), dim=1).mean()
 
         batch_losses = {
             'classifier': classifier_loss,
@@ -602,27 +670,143 @@ class PredictGradOutputGeneralForm(BaseClassifier):
         return batch_losses, info
 
     def visualize(self, train_loader, val_loader, tensorboard=None, epoch=None, **kwargs):
-        visualizations = super(PredictGradOutputFixedForm, self).visualize(train_loader, val_loader,
-                                                                           tensorboard, epoch)
+        visualizations = super(PredictGradOutputFixedFormWithConfusion, self).visualize(
+            train_loader, val_loader, tensorboard, epoch)
 
-        # gradient norm tensorboard histograms
+        # visualize the confusion matrix
         if tensorboard is not None:
-            vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
-            if val_loader is not None:
-                vis.pred_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-pred-grad')
+            fig, _ = vis.plot_confusion_matrix(torch.softmax(self.Q_logits, dim=1))
+            visualizations['confusion-matrix'] = fig
 
-        # add gradient pair plots
-        for p in [(0, 1), (4, 9)]:
-            fig, _ = vis.pred_gradient_pair_scatter(self, train_loader, d1=p[0], d2=p[1])
-            visualizations['gradients/train-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
-            if val_loader is not None:
-                fig, _ = vis.pred_gradient_pair_scatter(self, val_loader, d1=p[0], d2=p[1])
-                visualizations['gradients/val-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
+        # visualize q_label_pred
+        fig, _ = vis.plot_predictions(self, train_loader, key='q_label_pred')
+        visualizations['predictions/q-label-pred-train'] = fig
+        if val_loader is not None:
+            fig, _ = vis.plot_predictions(self, val_loader, key='q_label_pred')
+            visualizations['predictions/q-label-pred-val'] = fig
 
         return visualizations
 
 
-class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
+class PredictGradOutputGeneralForm(PredictGradBaseClassifier):
+    """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
+    The q network has general form.
+    """
+    def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
+                 grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, small_qtop=False, **kwargs):
+        super(PredictGradOutputGeneralForm, self).__init__(**kwargs)
+
+        self.args = {
+            'input_shape': input_shape,
+            'architecture_args': architecture_args,
+            'pretrained_arg': pretrained_arg,
+            'device': device,
+            'grad_weight_decay': grad_weight_decay,
+            'grad_l1_penalty': grad_l1_penalty,
+            'lamb': 'lamb',
+            'small_qtop': small_qtop,
+            'class': 'PredictGradOutputGeneralForm'
+        }
+
+        assert len(input_shape) == 3
+        self.input_shape = [None] + list(input_shape)
+        self.architecture_args = architecture_args
+        self.pretrained_arg = pretrained_arg
+        self.device = device
+        self.grad_weight_decay = grad_weight_decay
+        self.grad_l1_penalty = grad_l1_penalty
+        self.lamb = lamb
+        self.small_qtop = small_qtop
+
+        # initialize the network
+        self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'],
+                                                   input_shape=self.input_shape)
+        self.classifier = self.classifier.to(self.device)
+        self.num_classes = self.architecture_args['classifier'][-1]['dim']
+
+        if self.pretrained_arg is not None:
+            self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
+            q_base_shape = self.q_base.output_shape
+        else:
+            self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                              input_shape=self.input_shape)
+            self.q_base = self.q_base.to(self.device)
+
+        # NOTE: we want to use classifier parameters too
+        # TODO: find a good parametrization
+        if self.small_qtop:
+            self.q_top = torch.nn.Sequential(
+                torch.nn.Linear(q_base_shape[-1] + self.num_classes, self.num_classes)).to(self.device)
+        else:
+            self.q_top = torch.nn.Sequential(
+                torch.nn.Linear(q_base_shape[-1] + self.num_classes, 128),
+                torch.nn.ReLU(inplace=True),
+                torch.nn.Linear(128, self.num_classes)).to(self.device)
+
+        print(self)
+
+    def forward(self, inputs, grad_enabled=False, **kwargs):
+        torch.set_grad_enabled(grad_enabled)
+        x = inputs[0].to(self.device)
+
+        # compute classifier predictions
+        pred_before = self.classifier(x)
+        pred_detached = pred_before.detach()
+
+        # predict the gradient wrt to logits
+        rx = self.q_base(x)
+        grad_pred = self.q_top(torch.cat([rx, pred_detached], dim=1))
+
+        # change the gradients
+        pred = nn.GradReplacement.apply(pred_before, grad_pred)
+
+        out = {
+            'pred': pred,
+            'pred_detached': pred_detached,
+            'grad_pred': grad_pred
+        }
+
+        return out
+
+    def compute_loss(self, inputs, labels, grad_enabled, **kwargs):
+        torch.set_grad_enabled(grad_enabled)
+
+        info = self.forward(inputs=inputs, grad_enabled=grad_enabled)
+        pred = info['pred']
+        grad_pred = info['grad_pred']
+        pred_detached = info['pred_detached']
+
+        y = labels[0].to(self.device)
+        y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
+
+        # classification loss
+        classifier_loss = F.cross_entropy(input=pred, target=y)
+
+        # I(g : y | x) penalty
+        grad_actual = torch.softmax(pred_detached, dim=1) - y_one_hot
+        info_penalty = self.lamb * losses.mse(grad_actual, grad_pred)
+
+        batch_losses = {
+            'classifier': classifier_loss,
+            'info_penalty': info_penalty
+        }
+
+        # add predicted gradient norm penalty
+        if self.grad_weight_decay > 0:
+            grad_l2_loss = self.grad_weight_decay *\
+                           torch.mean(torch.sum(grad_pred**2, dim=1), dim=0)
+            batch_losses['pred_grad_l2'] = grad_l2_loss
+
+        if self.grad_l1_penalty > 0:
+            grad_l1_loss = self.grad_l1_penalty * \
+                           torch.mean(torch.sum(torch.abs(grad_pred), dim=1), dim=0)
+            batch_losses['pred_grad_l1'] = grad_l1_loss
+
+        return batch_losses, info
+
+
+# TODO: pred_before needs to be detached
+class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     The q network has general form and uses label information.
     """
@@ -729,23 +913,3 @@ class PredictGradOutputGeneralFormUseLabel(BaseClassifier):
             batch_losses['pred_grad_l1'] = grad_l1_loss
 
         return batch_losses, info
-
-    def visualize(self, train_loader, val_loader, tensorboard=None, epoch=None, **kwargs):
-        visualizations = super(PredictGradOutputGeneralFormUseLabel, self).visualize(train_loader, val_loader,
-                                                                                     tensorboard, epoch)
-
-        # gradient norm tensorboard histograms
-        if tensorboard is not None:
-            vis.pred_gradient_norm_histogram(self, train_loader, tensorboard, epoch, name='train-pred-grad')
-            if val_loader is not None:
-                vis.pred_gradient_norm_histogram(self, val_loader, tensorboard, epoch, name='val-pred-grad')
-
-        # add gradient pair plots
-        for p in [(0, 1), (4, 9)]:
-            fig, _ = vis.pred_gradient_pair_scatter(self, train_loader, d1=p[0], d2=p[1])
-            visualizations['gradients/train-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
-            if val_loader is not None:
-                fig, _ = vis.pred_gradient_pair_scatter(self, val_loader, d1=p[0], d2=p[1])
-                visualizations['gradients/val-pred-scatter-{}-{}'.format(p[0], p[1])] = fig
-
-        return visualizations
