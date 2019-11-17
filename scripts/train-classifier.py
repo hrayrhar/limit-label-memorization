@@ -29,11 +29,7 @@ def main():
     parser.set_defaults(transform_validation=True)
     parser.add_argument('--remove_prob', type=float, default=0.5)
 
-    parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier',
-                        choices=['StandardClassifier', 'PenalizeLastLayerFixedForm',
-                                 'PenalizeLastLayerGeneralForm', 'PredictGradOutputFixedForm',
-                                 'PredictGradOutputGeneralForm', 'PredictGradOutputGeneralFormUseLabel',
-                                 'PredictGradOutputFixedFormWithConfusion'])
+    parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier')
     parser.add_argument('--loss_function', type=str, default='ce',
                         choices=['ce', 'mse', 'mad'])
     parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
@@ -57,6 +53,17 @@ def main():
             'lr': 1e-3
         }
     }
+
+    # optimization_args = {
+    #     'optimizer': {
+    #         'name': 'sgd',
+    #         'lr': 1e-3,
+    #     },
+    #     'scheduler': {
+    #         'step_size': 15,
+    #         'gamma': 1.25
+    #     }
+    # }
 
     with open(args.config, 'r') as f:
         architecture_args = json.load(f)
