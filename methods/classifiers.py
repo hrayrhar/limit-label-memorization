@@ -1,5 +1,5 @@
 from collections import defaultdict
-from modules import nn, utils, losses, pretrained_models
+from modules import nn_utils, utils, losses, pretrained_models
 from modules import visualization as vis
 import numpy as np
 import torch
@@ -90,8 +90,8 @@ class StandardClassifier(BaseClassifier):
         # initialize the network
         self.repr_net = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
         self.repr_shape = self.repr_net.output_shape
-        self.classifier, output_shape = nn.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                              input_shape=self.repr_shape)
+        self.classifier, output_shape = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
+                                                                    input_shape=self.repr_shape)
         self.num_classes = output_shape[-1]
         self.classifier = self.classifier.to(self.device)
 
@@ -163,8 +163,8 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         self.num_classes = self.architecture_args['classifier'][-1]['dim']
         self.last_layer_dim = self.architecture_args['classifier'][-2]['dim']
 
-        self.classifier_base, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'][:-1],
-                                                        input_shape=self.input_shape)
+        self.classifier_base, _ = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'][:-1],
+                                                              input_shape=self.input_shape)
         self.classifier_base = self.classifier_base.to(self.device)
         self.classifier_last_layer = torch.nn.Linear(self.last_layer_dim,
                                                      self.num_classes,
@@ -174,8 +174,8 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
             self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
             q_base_shape = self.q_base.output_shape
         else:
-            self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
-                                                              input_shape=self.input_shape)
+            self.q_base, q_base_shape = nn_utils.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                                    input_shape=self.input_shape)
             self.q_base = self.q_base.to(self.device)
 
         self.q_top = torch.nn.Sequential(
@@ -282,7 +282,7 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
         self.num_classes = self.architecture_args['classifier'][-1]['dim']
         self.last_layer_dim = self.architecture_args['classifier'][-2]['dim']
 
-        self.classifier_base, _ = nn.parse_feed_forward(
+        self.classifier_base, _ = nn_utils.parse_feed_forward(
             args=self.architecture_args['classifier'][:-1],
             input_shape=self.input_shape)
         self.classifier_base = self.classifier_base.to(self.device)
@@ -294,8 +294,8 @@ class PenalizeLastLayerGeneralForm(BaseClassifier):
             self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
             q_base_shape = self.q_base.output_shape
         else:
-            self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
-                                                              input_shape=self.input_shape)
+            self.q_base, q_base_shape = nn_utils.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                                    input_shape=self.input_shape)
             self.q_base = self.q_base.to(self.device)
 
         # TODO: parametrize better. Takes (r(x), z), outputs matrix.
@@ -408,7 +408,7 @@ class PredictGradOutputFixedForm(PredictGradBaseClassifier):
     """
     def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
                  grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, small_qtop=False,
-                 sample_from_q=False, **kwargs):
+                 sample_from_q=False, q_dist='Gaussian', **kwargs):
         super(PredictGradOutputFixedForm, self).__init__(**kwargs)
 
         self.args = {
@@ -421,6 +421,7 @@ class PredictGradOutputFixedForm(PredictGradBaseClassifier):
             'lamb': 'lamb',
             'small_qtop': small_qtop,
             'sample_from_q': sample_from_q,
+            'q_dist': q_dist,
             'class': 'PredictGradOutputFixedForm'
         }
 
@@ -434,12 +435,21 @@ class PredictGradOutputFixedForm(PredictGradBaseClassifier):
         self.lamb = lamb
         self.small_qtop = small_qtop
         self.sample_from_q = sample_from_q
-        self.grad_replacement_class = nn.get_grad_replacement_class(
-            sample=self.sample_from_q, standard_dev=np.sqrt(1.0 / 2.0 / (self.lamb + 1e-12)))
+        self.q_dist = q_dist
+
+        # TODO: fix everything
+        if self.q_dist == 'Gaussian':
+            self.grad_replacement_class = nn_utils.get_grad_replacement_class(
+                sample=self.sample_from_q, standard_dev=np.sqrt(1.0 / 2.0 / (self.lamb + 1e-12)))
+        elif self.q_dist == 'Laplace':
+            self.grad_replacement_class = nn_utils.get_grad_replacement_class(
+                sample=self.sample_from_q, standard_dev=np.sqrt(1.0 / 2.0 / (self.lamb + 1e-12)))
+        else:
+            raise NotImplementedError()
 
         # initialize the network
-        self.classifier, output_shape = nn.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                              input_shape=self.input_shape)
+        self.classifier, output_shape = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
+                                                                    input_shape=self.input_shape)
         self.classifier = self.classifier.to(self.device)
         self.num_classes = output_shape[-1]
 
@@ -447,8 +457,8 @@ class PredictGradOutputFixedForm(PredictGradBaseClassifier):
             self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
             q_base_shape = self.q_base.output_shape
         else:
-            self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
-                                                              input_shape=self.input_shape)
+            self.q_base, q_base_shape = nn_utils.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                                    input_shape=self.input_shape)
             self.q_base = self.q_base.to(self.device)
 
         if small_qtop:
@@ -497,7 +507,12 @@ class PredictGradOutputFixedForm(PredictGradBaseClassifier):
         classifier_loss = F.cross_entropy(input=pred, target=y)
 
         # I(g : y | x) penalty
-        info_penalty = self.lamb * losses.mse(y_one_hot, torch.softmax(q_label_pred, dim=1))
+        if self.q_dist == 'Gaussian':
+            info_penalty = self.lamb * losses.mse(y_one_hot, torch.softmax(q_label_pred, dim=1))
+        elif self.q_dist == 'Laplace':
+            info_penalty = self.lamb * losses.mad(y_one_hot, torch.softmax(q_label_pred, dim=1))
+        else:
+            raise NotImplementedError()
 
         batch_losses = {
             'classifier': classifier_loss,
@@ -563,12 +578,12 @@ class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
         self.lamb = lamb
         self.small_qtop = small_qtop
         self.sample_from_q = sample_from_q
-        self.grad_replacement_class = nn.get_grad_replacement_class(
+        self.grad_replacement_class = nn_utils.get_grad_replacement_class(
             sample=self.sample_from_q, standard_dev=np.sqrt(1.0 / 2.0 / (self.lamb + 1e-12)))
 
         # initialize the network
-        self.classifier, output_shape = nn.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                              input_shape=self.input_shape)
+        self.classifier, output_shape = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
+                                                                    input_shape=self.input_shape)
         self.classifier = self.classifier.to(self.device)
         self.num_classes = output_shape[-1]
 
@@ -576,8 +591,8 @@ class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
             self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
             q_base_shape = self.q_base.output_shape
         else:
-            self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
-                                                              input_shape=self.input_shape)
+            self.q_base, q_base_shape = nn_utils.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                                    input_shape=self.input_shape)
             self.q_base = self.q_base.to(self.device)
 
         if small_qtop:
@@ -719,8 +734,8 @@ class PredictGradOutputGeneralForm(PredictGradBaseClassifier):
         self.small_qtop = small_qtop
 
         # initialize the network
-        self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                   input_shape=self.input_shape)
+        self.classifier, _ = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
+                                                         input_shape=self.input_shape)
         self.classifier = self.classifier.to(self.device)
         self.num_classes = self.architecture_args['classifier'][-1]['dim']
 
@@ -728,8 +743,8 @@ class PredictGradOutputGeneralForm(PredictGradBaseClassifier):
             self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
             q_base_shape = self.q_base.output_shape
         else:
-            self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
-                                                              input_shape=self.input_shape)
+            self.q_base, q_base_shape = nn_utils.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                                    input_shape=self.input_shape)
             self.q_base = self.q_base.to(self.device)
 
         # NOTE: we want to use classifier parameters too
@@ -737,11 +752,13 @@ class PredictGradOutputGeneralForm(PredictGradBaseClassifier):
         if self.small_qtop:
             self.q_top = torch.nn.Sequential(
                 torch.nn.Linear(q_base_shape[-1] + self.num_classes, self.num_classes)).to(self.device)
+            # TODO: add tanh here too, or delete below
         else:
             self.q_top = torch.nn.Sequential(
                 torch.nn.Linear(q_base_shape[-1] + self.num_classes, 128),
                 torch.nn.ReLU(inplace=True),
-                torch.nn.Linear(128, self.num_classes)).to(self.device)
+                torch.nn.Linear(128, self.num_classes),
+                torch.nn.Tanh()).to(self.device)
 
         print(self)
 
@@ -755,10 +772,10 @@ class PredictGradOutputGeneralForm(PredictGradBaseClassifier):
 
         # predict the gradient wrt to logits
         rx = self.q_base(x)
-        grad_pred = self.q_top(torch.cat([rx, pred_detached], dim=1))
+        grad_pred = self.q_top(torch.cat([rx, torch.softmax(pred_detached, dim=1)], dim=1))
 
         # change the gradients
-        pred = nn.GradReplacement.apply(pred_before, grad_pred)
+        pred = nn_utils.GradReplacement.apply(pred_before, grad_pred)
 
         out = {
             'pred': pred,
@@ -835,8 +852,8 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
         self.lamb = lamb
 
         # initialize the network
-        self.classifier, _ = nn.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                   input_shape=self.input_shape)
+        self.classifier, _ = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
+                                                         input_shape=self.input_shape)
         self.classifier = self.classifier.to(self.device)
         self.num_classes = self.architecture_args['classifier'][-1]['dim']
 
@@ -844,8 +861,8 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
             self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
             q_base_shape = self.q_base.output_shape
         else:
-            self.q_base, q_base_shape = nn.parse_feed_forward(args=self.architecture_args['q-base'],
-                                                              input_shape=self.input_shape)
+            self.q_base, q_base_shape = nn_utils.parse_feed_forward(args=self.architecture_args['q-base'],
+                                                                    input_shape=self.input_shape)
             self.q_base = self.q_base.to(self.device)
 
         # NOTE: we want to use classifier parameters too
@@ -886,7 +903,7 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
         info['grad_pred'] = grad_pred
 
         # change the gradients
-        pred = nn.GradReplacement.apply(pred_before, grad_pred)
+        pred = nn_utils.GradReplacement.apply(pred_before, grad_pred)
         info['pred'] = pred
 
         # classification loss

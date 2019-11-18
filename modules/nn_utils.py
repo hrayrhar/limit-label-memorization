@@ -185,8 +185,6 @@ class GradReplacement(torch.autograd.Function):
         return grad_wrt_logits, torch.zeros_like(grad_wrt_logits)
 
 
-
-
 # Conditional distributions should return list of parameters.
 # They should have these functions defined:
 # - sample(params)

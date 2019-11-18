@@ -38,6 +38,7 @@ def main():
     parser.add_argument('--pretrained_arg', '-r', type=str, default=None)
     parser.add_argument('--small_qtop', action='store_true', dest='small_qtop')
     parser.add_argument('--sample_from_q', action='store_true', dest='sample_from_q')
+    parser.add_argument('--q_dist', type=str, default='Gaussian', choices=['Gaussian', 'Laplace'])
     parser.set_defaults(small_qtop=False)
     parser.set_defaults(sample_from_q=False)
     args = parser.parse_args()
@@ -79,6 +80,7 @@ def main():
                         lamb=args.lamb,
                         small_qtop=args.small_qtop,
                         sample_from_q=args.sample_from_q,
+                        q_dist=args.q_dist,
                         loss_function=args.loss_function)
 
     training.train(model=model,

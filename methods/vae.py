@@ -1,4 +1,4 @@
-from modules import nn, losses
+from modules import nn_utils, losses
 from modules import visualization as vis
 import torch
 
@@ -28,12 +28,12 @@ class VAE(torch.nn.Module):
         # initialize the network
         self.hidden_shape = [None, self.architecture_args['hidden_dim']]
 
-        self.decoder, _ = nn.parse_feed_forward(args=self.architecture_args['decoder'],
-                                                input_shape=self.hidden_shape)
+        self.decoder, _ = nn_utils.parse_feed_forward(args=self.architecture_args['decoder'],
+                                                      input_shape=self.hidden_shape)
         self.decoder = self.decoder.to(self.device)
 
-        self.encoder, _ = nn.parse_feed_forward(args=self.architecture_args['encoder'],
-                                                input_shape=self.input_shape)
+        self.encoder, _ = nn_utils.parse_feed_forward(args=self.architecture_args['encoder'],
+                                                      input_shape=self.input_shape)
 
         self.encoder = self.encoder.to(self.device)
 
