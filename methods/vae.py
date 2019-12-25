@@ -7,7 +7,8 @@ class VAE(torch.nn.Module):
     """ VAE with two additional regularization parameters.
      `beta`: weight of the KL term, as in beta-VAE
     """
-    def __init__(self, input_shape, architecture_args, device='cuda', **kwargs):
+    def __init__(self, input_shape, architecture_args, device='cuda',
+                 revert_normalization=None, **kwargs):
         super(VAE, self).__init__()
 
         self.args = {
@@ -21,6 +22,7 @@ class VAE(torch.nn.Module):
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
         self.device = device
+        self.revert_normalization = revert_normalization
 
         # used later
         self._vis_iters = 0
@@ -77,7 +79,9 @@ class VAE(torch.nn.Module):
         info = self.forward(inputs=inputs, sampling=True, detailed_output=True,
                             grad_enabled=grad_enabled)
 
-        recon_loss = losses.binary_cross_entropy(x=info['x'], x_rec=info['x_rec'])
+        eps = 1e-6
+        target = torch.clamp(self.revert_normalization(info['x']), eps, 1-eps)
+        recon_loss = losses.binary_cross_entropy(x=target, x_rec=info['x_rec'])
         kl_loss = self.encoder.kl_divergence(info)
 
         batch_losses = {

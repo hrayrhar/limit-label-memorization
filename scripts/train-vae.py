@@ -15,11 +15,12 @@ def main():
     parser.add_argument('--batch_size', '-b', type=int, default=256)
     parser.add_argument('--epochs', '-e', type=int, default=400)
     parser.add_argument('--save_iter', '-s', type=int, default=10)
-    parser.add_argument('--vis_iter', '-v', type=int, default=2)
+    parser.add_argument('--vis_iter', '-v', type=int, default=10)
     parser.add_argument('--log_dir', '-l', type=str, default=None)
 
     parser.add_argument('--dataset', '-D', type=str, default='mnist',
                         choices=['mnist', 'cifar10'])
+    parser.add_argument('--data_augmentation', '-A', action='store_true', dest='data_augmentation')
     parser.add_argument('--num_train_examples', type=int, default=None)
     parser.add_argument('--noise_level', '-n', type=float, default=0.0)
     parser.add_argument('--transform_function', type=str, default=None,
@@ -33,7 +34,7 @@ def main():
     print(args)
 
     # Load data
-    train_loader, val_loader, test_loader = datasets.load_data_from_arguments(args, skip_normalization=True)
+    train_loader, val_loader, test_loader = datasets.load_data_from_arguments(args)
 
     # Options
     optimization_args = {
@@ -46,9 +47,12 @@ def main():
     with open(args.config, 'r') as f:
         architecture_args = json.load(f)
 
+    revert_normalization = (lambda x: datasets.revert_normalization(x, train_loader.dataset))
+
     model = VAE(input_shape=train_loader.dataset[0][0].shape,
                 architecture_args=architecture_args,
-                device=args.device)
+                device=args.device,
+                revert_normalization=revert_normalization)
 
     training.train(model=model,
                    train_loader=train_loader,
