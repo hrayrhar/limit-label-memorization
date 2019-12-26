@@ -39,6 +39,7 @@ def reconstruction_plot(model, train_data, val_data, n_samples=5, plt=None):
     train_data = [train_data[i][0] for i in range(n_samples)]
     val_data = [val_data[i][0] for i in range(n_samples)]
     samples = torch.stack(train_data + val_data, dim=0)
+    samples = revert_normalization(samples, train_data)
     x_rec = model(inputs=[samples])['x_rec']
     x_rec = x_rec.reshape(samples.shape)
     samples = utils.to_numpy(samples)
