@@ -51,9 +51,15 @@ def run_partition(model, epoch, tensorboard, optimizer, loader, partition, train
         batch_total_loss = sum([loss for name, loss in batch_losses.items()])
 
         if training:
-            # backward pass & update
+            # backward pass
             batch_total_loss.backward()
-            optimizer.step()  # update the parameters
+
+            # some models might need to do something before applying gradients
+            if hasattr(model, 'before_weight_update'):
+                model.before_weight_update()
+
+            # update the parameters
+            optimizer.step()
 
         # call methods on_iteration_end if it is present
         # the network can compute some metrics here
