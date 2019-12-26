@@ -41,9 +41,9 @@ class PretrainedResNet34(torch.nn.Module):
         return x.reshape((x.shape[0], -1))
 
 
-class PretrainedMNISTVAE(torch.nn.Module):
+class PretrainedVAE(torch.nn.Module):
     def __init__(self, path, device):
-        super(PretrainedMNISTVAE, self).__init__()
+        super(PretrainedVAE, self).__init__()
         self.vae = utils.load(path, device=device)
         self.output_shape = [None, 128]
 
@@ -53,11 +53,7 @@ class PretrainedMNISTVAE(torch.nn.Module):
             params[name].requires_grad = False
 
     def forward(self, x):
-        # normalize x to make it live in [0, 1], because VAE was trained on such data
-        mean = 0.456
-        std = 0.224
-        return self.vae.forward([mean + std * x], sampling=False,
-                                grad_enabled=True)['z']
+        return self.vae.forward(x, sampling=False, grad_enabled=True)['z']
 
 
 class Identity(torch.nn.Module):
@@ -74,4 +70,4 @@ def get_pretrained_model(pretrained_arg, input_shape, device):
         return Identity(input_shape).to(device)
     if pretrained_arg == 'resnet':
         return PretrainedResNet34().to(device)
-    return PretrainedMNISTVAE(pretrained_arg, device)
+    return PretrainedVAE(pretrained_arg, device)
