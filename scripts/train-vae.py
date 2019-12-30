@@ -1,6 +1,6 @@
 from methods.vae import VAE
 from modules import training
-import modules.data as datasets
+import modules.data_utils as datasets
 import modules.visualization as vis
 import argparse
 import json

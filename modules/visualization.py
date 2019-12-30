@@ -7,7 +7,7 @@ possible to use these tools in both jupyter notebooks and in ordinary scripts.
 import torch.nn.functional as F
 from sklearn.manifold import TSNE
 from modules import utils
-from modules.data import revert_normalization
+from modules.data_utils import revert_normalization
 import numpy as np
 import os
 import torch
