@@ -1,0 +1,8 @@
+{
+  "classifier": {
+    "net": "resnet-clothing1M"
+  },
+  "q-base": {
+    "net": "resnet-clothing1M"
+  }
+}

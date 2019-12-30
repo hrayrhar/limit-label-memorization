@@ -59,6 +59,21 @@ class Identity(nn.Module):
 def parse_feed_forward(args, input_shape):
     """Parses a sequential feed-forward neural network from json config."""
 
+    if isinstance(args, dict):
+        if args['net'] == 'resnet-cifar10':
+            from modules.resnet_cifar10 import ResNet34
+            net = ResNet34()
+            output_shape = infer_shape([net], input_shape)
+            print("output.shape:", output_shape)
+            return net, output_shape
+    if isinstance(args, dict):
+        if args['net'] == 'resnet-clothing1M':
+            from torchvision.models import resnet50
+            net = resnet50(num_classes=14)
+            output_shape = infer_shape([net], input_shape)
+            print("output.shape:", output_shape)
+            return net, output_shape
+
     net = []
     for cur_layer in args:
         layer_type = cur_layer['type']
@@ -148,7 +163,7 @@ def parse_feed_forward(args, input_shape):
     return nn.Sequential(*net), output_shape
 
 
-def get_grad_replacement_class(sample=False, standard_dev=None):
+def get_grad_replacement_class(sample=False, standard_dev=None, q_dist='Gaussian'):
     if not sample:
         return GradReplacement
 
@@ -162,8 +177,13 @@ def get_grad_replacement_class(sample=False, standard_dev=None):
         @staticmethod
         def backward(ctx, grad_output):
             grad_wrt_logits = ctx.saved_tensors[0]
-            eps = torch.randn(size=grad_wrt_logits.shape, device=grad_wrt_logits.device)
-            return grad_wrt_logits + standard_dev * eps, torch.zeros_like(grad_wrt_logits)
+            if q_dist == 'Gaussian':
+                dist = torch.distributions.Normal(loc=grad_wrt_logits, scale=standard_dev)
+            elif q_dist == 'Laplace':
+                dist = torch.distributions.Laplace(loc=grad_wrt_logits, scale=np.sqrt(1.0/2.0)*standard_dev)
+            else:
+                raise NotImplementedError()
+            return dist.sample(), torch.zeros_like(grad_wrt_logits)
 
     return GradReplacementWithSampling
 
