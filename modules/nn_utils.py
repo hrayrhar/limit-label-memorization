@@ -205,6 +205,25 @@ class GradReplacement(torch.autograd.Function):
         return grad_wrt_logits, torch.zeros_like(grad_wrt_logits)
 
 
+def get_grad_noise_class(standard_dev=None, q_dist='Gaussian'):
+    class GradNoise(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, pred):
+            return pred
+
+        @staticmethod
+        def backward(ctx, grad_output):
+            if q_dist == 'Gaussian':
+                dist = torch.distributions.Normal(loc=grad_output, scale=standard_dev)
+            elif q_dist == 'Laplace':
+                dist = torch.distributions.Laplace(loc=grad_output, scale=np.sqrt(1.0/2.0)*standard_dev)
+            else:
+                raise NotImplementedError()
+            return dist.sample()
+
+    return GradNoise
+
+
 # Conditional distributions should return list of parameters.
 # They should have these functions defined:
 # - sample(params)

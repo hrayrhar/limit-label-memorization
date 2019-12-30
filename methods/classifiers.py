@@ -65,10 +65,11 @@ class BaseClassifier(torch.nn.Module):
 class StandardClassifier(BaseClassifier):
     """ Standard classifier trained with cross-entropy loss.
     Has an option to work on pretrained representation of x.
+    Optionally, can add noise to the gradient wrt to the output logit.
     """
     def __init__(self, input_shape, architecture_args, pretrained_arg=None,
-                 device='cuda', loss_function='ce',
-                 **kwargs):
+                 device='cuda', loss_function='ce', add_noise=False, noise_type='Gaussian',
+                 noise_std=0.0, **kwargs):
         super(StandardClassifier, self).__init__(**kwargs)
 
         self.args = {
@@ -77,6 +78,9 @@ class StandardClassifier(BaseClassifier):
             'pretrained_arg': pretrained_arg,
             'device': device,
             'loss_function': loss_function,
+            'add_noise': add_noise,
+            'noise_type': noise_type,
+            'noise_std': noise_std,
             'class': 'StandardClassifier'
         }
 
@@ -86,6 +90,9 @@ class StandardClassifier(BaseClassifier):
         self.pretrained_arg = pretrained_arg
         self.device = device
         self.loss_function = loss_function
+        self.add_noise = add_noise
+        self.noise_type = noise_type
+        self.noise_std = noise_std
 
         # initialize the network
         self.repr_net = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
@@ -94,6 +101,7 @@ class StandardClassifier(BaseClassifier):
                                                                     input_shape=self.repr_shape)
         self.num_classes = output_shape[-1]
         self.classifier = self.classifier.to(self.device)
+        self.grad_noise_class = nn_utils.get_grad_noise_class(standard_dev=noise_std, q_dist=noise_type)
 
         print(self)
 
@@ -101,8 +109,12 @@ class StandardClassifier(BaseClassifier):
         torch.set_grad_enabled(grad_enabled)
         x = inputs[0].to(self.device)
 
+        pred = self.classifier(self.repr_net(x))
+        if self.add_noise:
+            pred = self.grad_noise_class.apply(pred)
+
         out = {
-            'pred': self.classifier(self.repr_net(x)),
+            'pred': pred
         }
 
         return out
@@ -118,7 +130,7 @@ class StandardClassifier(BaseClassifier):
         if self.loss_function == 'ce':
             classifier_loss = F.cross_entropy(input=pred, target=y)
         if self.loss_function == 'mse':
-            y_one_hot = y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
+            y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
             classifier_loss = losses.mse(y_one_hot, torch.softmax(pred, dim=1))
         if self.loss_function == 'mad':
             y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
@@ -129,6 +141,93 @@ class StandardClassifier(BaseClassifier):
         }
 
         return batch_losses, info
+
+
+class StandardClassifierWithNoise(BaseClassifier):
+    """ Standard classifier trained with cross-entropy loss and noisy gradients.
+    Has an option to work on pretrained representation of x.
+    """
+    def __init__(self, input_shape, architecture_args, pretrained_arg=None,
+                 device='cuda', loss_function='ce', add_noise=False, noise_type='Gaussian',
+                 noise_std=0.0, **kwargs):
+        super(StandardClassifierWithNoise, self).__init__(**kwargs)
+
+        self.args = {
+            'input_shape': input_shape,
+            'architecture_args': architecture_args,
+            'pretrained_arg': pretrained_arg,
+            'device': device,
+            'loss_function': loss_function,
+            'add_noise': add_noise,
+            'noise_type': noise_type,
+            'noise_std': noise_std,
+            'class': 'StandardClassifier'
+        }
+
+        assert len(input_shape) == 3
+        self.input_shape = [None] + list(input_shape)
+        self.architecture_args = architecture_args
+        self.pretrained_arg = pretrained_arg
+        self.device = device
+        self.loss_function = loss_function
+        self.add_noise = add_noise
+        self.noise_type = noise_type
+        self.noise_std = noise_std
+
+        # initialize the network
+        self.repr_net = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
+        self.repr_shape = self.repr_net.output_shape
+        self.classifier, output_shape = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
+                                                                    input_shape=self.repr_shape)
+        self.num_classes = output_shape[-1]
+        self.classifier = self.classifier.to(self.device)
+
+        print(self)
+
+    def forward(self, inputs, grad_enabled=False, **kwargs):
+        torch.set_grad_enabled(grad_enabled)
+        x = inputs[0].to(self.device)
+
+        pred = self.classifier(self.repr_net(x))
+
+        out = {
+            'pred': pred
+        }
+
+        return out
+
+    def compute_loss(self, inputs, labels, grad_enabled, **kwargs):
+        torch.set_grad_enabled(grad_enabled)
+
+        info = self.forward(inputs=inputs, grad_enabled=grad_enabled)
+        pred = info['pred']
+        y = labels[0].to(self.device)
+
+        # classification loss
+        if self.loss_function == 'ce':
+            classifier_loss = F.cross_entropy(input=pred, target=y)
+        if self.loss_function == 'mse':
+            y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
+            classifier_loss = losses.mse(y_one_hot, torch.softmax(pred, dim=1))
+        if self.loss_function == 'mad':
+            y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
+            classifier_loss = losses.mad(y_one_hot, torch.softmax(pred, dim=1))
+
+        batch_losses = {
+            'classifier': classifier_loss,
+        }
+
+        return batch_losses, info
+
+    def before_weight_update(self, **kwargs):
+        if not self.add_noise:
+            return
+        for param in self.parameters():
+            if param.requires_grad:
+                if self.noise_type == 'Gaussian':
+                    param.grad += self.noise_std * torch.randn(size=param.shape, device=self.device)
+                else:
+                    raise NotImplementedError()
 
 
 class PenalizeLastLayerFixedForm(BaseClassifier):
@@ -418,7 +517,7 @@ class PredictGradOutputFixedForm(PredictGradBaseClassifier):
             'device': device,
             'grad_weight_decay': grad_weight_decay,
             'grad_l1_penalty': grad_l1_penalty,
-            'lamb': 'lamb',
+            'lamb': lamb,
             'small_qtop': small_qtop,
             'sample_from_q': sample_from_q,
             'q_dist': q_dist,
@@ -440,10 +539,12 @@ class PredictGradOutputFixedForm(PredictGradBaseClassifier):
         # TODO: fix everything
         if self.q_dist == 'Gaussian':
             self.grad_replacement_class = nn_utils.get_grad_replacement_class(
-                sample=self.sample_from_q, standard_dev=np.sqrt(1.0 / 2.0 / (self.lamb + 1e-12)))
+                sample=self.sample_from_q, standard_dev=np.sqrt(1.0 / 2.0 / (self.lamb + 1e-12)), q_dist=self.q_dist)
         elif self.q_dist == 'Laplace':
             self.grad_replacement_class = nn_utils.get_grad_replacement_class(
-                sample=self.sample_from_q, standard_dev=np.sqrt(1.0 / 2.0 / (self.lamb + 1e-12)))
+                sample=self.sample_from_q, standard_dev=np.sqrt(2.0) / (self.lamb + 1e-6), q_dist=self.q_dist)
+        elif self.q_dist == 'dot':
+            self.grad_replacement_class = nn_utils.get_grad_replacement_class(sample=False)
         else:
             raise NotImplementedError()
 
@@ -508,9 +609,17 @@ class PredictGradOutputFixedForm(PredictGradBaseClassifier):
 
         # I(g : y | x) penalty
         if self.q_dist == 'Gaussian':
-            info_penalty = self.lamb * losses.mse(y_one_hot, torch.softmax(q_label_pred, dim=1))
+            # info_penalty = self.lamb * losses.mse(y_one_hot, torch.softmax(q_label_pred, dim=1))
+            # do not include lamb so that the first term has equal relative weight
+            info_penalty = losses.mse(y_one_hot, torch.softmax(q_label_pred, dim=1))
         elif self.q_dist == 'Laplace':
-            info_penalty = self.lamb * losses.mad(y_one_hot, torch.softmax(q_label_pred, dim=1))
+            # info_penalty = self.lamb * losses.mad(y_one_hot, torch.softmax(q_label_pred, dim=1))
+            # do not include lamb so that the first term has equal relative weight
+            info_penalty = losses.mad(y_one_hot, torch.softmax(q_label_pred, dim=1))
+        elif self.q_dist == 'dot':
+            # this corresponds to Taylor approximation of L(w + g_t)
+            grad_actual = torch.softmax(pred.detach(), dim=1) - y_one_hot
+            info_penalty = -self.lamb * torch.mean((grad_pred * grad_actual).sum(dim=1))
         else:
             raise NotImplementedError()
 
@@ -562,7 +671,7 @@ class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
             'device': device,
             'grad_weight_decay': grad_weight_decay,
             'grad_l1_penalty': grad_l1_penalty,
-            'lamb': 'lamb',
+            'lamb': lamb,
             'small_qtop': small_qtop,
             'sample_from_q': sample_from_q,
             'class': 'PredictGradOutputFixedFormWithConfusion'
@@ -718,7 +827,7 @@ class PredictGradOutputGeneralForm(PredictGradBaseClassifier):
             'device': device,
             'grad_weight_decay': grad_weight_decay,
             'grad_l1_penalty': grad_l1_penalty,
-            'lamb': 'lamb',
+            'lamb': lamb,
             'small_qtop': small_qtop,
             'class': 'PredictGradOutputGeneralForm'
         }
@@ -838,7 +947,7 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
             'pretrained_arg': pretrained_arg,
             'grad_weight_decay': grad_weight_decay,
             'grad_l1_penalty': grad_l1_penalty,
-            'lamb': 'lamb',
+            'lamb': lamb,
             'class': 'PredictGradOutputGeneralFormUseLabel'
         }
 
