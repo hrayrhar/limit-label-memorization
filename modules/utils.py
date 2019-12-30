@@ -1,5 +1,5 @@
 from torch.utils.data import DataLoader
-from methods import classifiers, vae
+import methods
 from collections import defaultdict
 from tqdm import tqdm
 import torch
@@ -62,11 +62,14 @@ def load(path, device=None):
     args = saved_dict['args']
     if device is not None:
         args['device'] = device
-    if args['class'] == 'VAE':
-        model = vae.VAE(**args)
-    else:
-        model_class = getattr(classifiers, args['class'])
-        model = model_class(**args)
+
+    model_class = getattr(methods, args['class'])
+
+    # NOTE: this is here because of a silly mistake.
+    if ('lamb' in args) and (args['lamb'] == 'lamb'):
+        args['lamb'] = 1.0
+
+    model = model_class(**args)
     model.load_state_dict(saved_dict['model'])
     model.eval()
     return model

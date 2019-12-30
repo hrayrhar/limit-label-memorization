@@ -1,4 +1,4 @@
-from methods import classifiers
+import methods
 from modules import training
 import modules.data_utils as datasets
 import modules.visualization as vis
@@ -79,7 +79,7 @@ def main():
     with open(args.config, 'r') as f:
         architecture_args = json.load(f)
 
-    model_class = getattr(classifiers, args.model_class)
+    model_class = getattr(methods, args.model_class)
 
     model = model_class(input_shape=train_loader.dataset[0][0].shape,
                         architecture_args=architecture_args,
