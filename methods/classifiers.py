@@ -132,9 +132,9 @@ class StandardClassifier(BaseClassifier):
         if self.loss_function == 'mse':
             y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
             classifier_loss = losses.mse(y_one_hot, torch.softmax(pred, dim=1))
-        if self.loss_function == 'mad':
+        if self.loss_function == 'mae':
             y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
-            classifier_loss = losses.mad(y_one_hot, torch.softmax(pred, dim=1))
+            classifier_loss = losses.mae(y_one_hot, torch.softmax(pred, dim=1))
 
         batch_losses = {
             'classifier': classifier_loss,
@@ -209,9 +209,9 @@ class StandardClassifierWithNoise(BaseClassifier):
         if self.loss_function == 'mse':
             y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
             classifier_loss = losses.mse(y_one_hot, torch.softmax(pred, dim=1))
-        if self.loss_function == 'mad':
+        if self.loss_function == 'mae':
             y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
-            classifier_loss = losses.mad(y_one_hot, torch.softmax(pred, dim=1))
+            classifier_loss = losses.mae(y_one_hot, torch.softmax(pred, dim=1))
 
         batch_losses = {
             'classifier': classifier_loss,
@@ -613,9 +613,9 @@ class PredictGradOutputFixedForm(PredictGradBaseClassifier):
             # do not include lamb so that the first term has equal relative weight
             info_penalty = losses.mse(y_one_hot, torch.softmax(q_label_pred, dim=1))
         elif self.q_dist == 'Laplace':
-            # info_penalty = self.lamb * losses.mad(y_one_hot, torch.softmax(q_label_pred, dim=1))
+            # info_penalty = self.lamb * losses.mae(y_one_hot, torch.softmax(q_label_pred, dim=1))
             # do not include lamb so that the first term has equal relative weight
-            info_penalty = losses.mad(y_one_hot, torch.softmax(q_label_pred, dim=1))
+            info_penalty = losses.mae(y_one_hot, torch.softmax(q_label_pred, dim=1))
         elif self.q_dist == 'dot':
             # this corresponds to Taylor approximation of L(w + g_t)
             grad_actual = torch.softmax(pred.detach(), dim=1) - y_one_hot
