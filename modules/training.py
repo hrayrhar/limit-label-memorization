@@ -135,10 +135,17 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
             for (name, fig) in visualizations.items():
                 tensorboard.add_figure(name, fig, epoch)
 
-        # save the model
+        # save the model according to our schedule
         if (epoch + 1) % save_iter == 0:
             utils.save(model=model, optimizer=optimizer, scheduler=scheduler,
                        path=os.path.join(log_dir, 'checkpoints', 'epoch{}.mdl'.format(epoch)))
+
+        # save the model if it gives the best validation score
+        if hasattr(model, 'is_best_val_result'):
+            if model.is_best_val_result():
+                print("This is the best validation result so far. Saving the model ...")
+                utils.save(model=model, optimizer=optimizer, scheduler=scheduler,
+                           path=os.path.join(log_dir, 'checkpoints', 'best_val.mdl'))
 
         # update the learning rate
         scheduler.step()

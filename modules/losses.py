@@ -48,7 +48,7 @@ def get_classification_loss(target, pred, loss_function='ce', loss_function_para
     :param loss_function_param: when 'gce' this should specify the q parameter
     """
     if loss_function == 'ce':
-        return F.cross_entropy(input=pred, target=target)
+        return F.cross_entropy(input=pred, target=target.argmax(dim=1))
     if loss_function == 'mse':
         return mse(target, torch.softmax(pred, dim=1))
     if loss_function == 'mae':

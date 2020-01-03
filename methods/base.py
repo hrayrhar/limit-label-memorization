@@ -13,6 +13,8 @@ class BaseClassifier(torch.nn.Module):
         # initialize and use later
         self._accuracy = defaultdict(list)
         self._current_iteration = defaultdict(lambda: 0)
+        self._best_val_accuracy = -1.0
+        self._is_best_so_far = False
 
     def on_epoch_start(self, partition, **kwargs):
         self._accuracy[partition] = []
@@ -25,7 +27,16 @@ class BaseClassifier(torch.nn.Module):
 
     def on_epoch_end(self, partition, tensorboard, epoch, **kwargs):
         accuracy = np.mean(self._accuracy[partition])
+        if partition == 'val':
+            if accuracy > self._best_val_accuracy:
+                self._best_val_accuracy = accuracy
+                self._is_best_so_far = True
+            else:
+                self._is_best_so_far = False
         tensorboard.add_scalar('metrics/{}_accuracy'.format(partition), accuracy, epoch)
+
+    def is_best_val_result(self, **kwargs):
+        return self._is_best_so_far
 
     def before_weight_update(self, **kwargs):
         pass
