@@ -35,7 +35,7 @@ def main():
 
     parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier')
     parser.add_argument('--loss_function', type=str, default='ce',
-                        choices=['ce', 'mse', 'mae'])
+                        choices=['ce', 'mse', 'mae', 'gce', 'dmi'])
     parser.add_argument('--loss_function_param', type=float, default=1.0)
     parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
     parser.add_argument('--grad_l1_penalty', '-S', type=float, default=0.0)
