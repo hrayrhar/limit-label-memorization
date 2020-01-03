@@ -49,6 +49,7 @@ def main():
 
     parser.add_argument('--add_noise', action='store_true', dest='add_noise',
                         help='add noise to the gradients of a standard classifier.')
+    parser.set_defaults(add_noise=False)
     parser.add_argument('--noise_type', type=str, default='Gaussian', choices=['Gaussian', 'Laplace'])
     parser.add_argument('--noise_std', type=float, default=0.0)
 

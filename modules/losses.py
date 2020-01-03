@@ -30,8 +30,8 @@ def mae(target, pred):
 def gce(target, pred, q=1.0):
     # generalized cross-entropy loss
     assert q > 1e-6
-    pred_y = torch.sum(target * pred).sum(dim=1)
-    return torch.mean((1.0 - torch.pow(pred_y, q)) / q, dim=0)
+    pred_y = torch.sum(target * pred, dim=1)
+    return torch.mean((1.0 - pred_y ** q) / q, dim=0)
 
 
 def dmi(target, pred):
