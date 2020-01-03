@@ -11,7 +11,7 @@ class StandardClassifier(BaseClassifier):
     """
     def __init__(self, input_shape, architecture_args, pretrained_arg=None,
                  device='cuda', loss_function='ce', add_noise=False, noise_type='Gaussian',
-                 noise_std=0.0, **kwargs):
+                 noise_std=0.0, loss_function_param=None, **kwargs):
         super(StandardClassifier, self).__init__(**kwargs)
 
         self.args = {
@@ -23,6 +23,7 @@ class StandardClassifier(BaseClassifier):
             'add_noise': add_noise,
             'noise_type': noise_type,
             'noise_std': noise_std,
+            'loss_function_param': loss_function_param,
             'class': 'StandardClassifier'
         }
 
@@ -35,6 +36,7 @@ class StandardClassifier(BaseClassifier):
         self.add_noise = add_noise
         self.noise_type = noise_type
         self.noise_std = noise_std
+        self.loss_function_param = loss_function_param
 
         # initialize the network
         self.repr_net = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
@@ -69,14 +71,10 @@ class StandardClassifier(BaseClassifier):
         y = labels[0].to(self.device)
 
         # classification loss
-        if self.loss_function == 'ce':
-            classifier_loss = F.cross_entropy(input=pred, target=y)
-        if self.loss_function == 'mse':
-            y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
-            classifier_loss = losses.mse(y_one_hot, torch.softmax(pred, dim=1))
-        if self.loss_function == 'mae':
-            y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
-            classifier_loss = losses.mae(y_one_hot, torch.softmax(pred, dim=1))
+        y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
+        classifier_loss = losses.get_classification_loss(target=y_one_hot, pred=pred,
+                                                         loss_function=self.loss_function,
+                                                         loss_function_param=self.loss_function_param)
 
         batch_losses = {
             'classifier': classifier_loss,
@@ -91,7 +89,7 @@ class StandardClassifierWithNoise(BaseClassifier):
     """
     def __init__(self, input_shape, architecture_args, pretrained_arg=None,
                  device='cuda', loss_function='ce', add_noise=False, noise_type='Gaussian',
-                 noise_std=0.0, **kwargs):
+                 noise_std=0.0, loss_function_param=None, **kwargs):
         super(StandardClassifierWithNoise, self).__init__(**kwargs)
 
         self.args = {
@@ -103,6 +101,7 @@ class StandardClassifierWithNoise(BaseClassifier):
             'add_noise': add_noise,
             'noise_type': noise_type,
             'noise_std': noise_std,
+            'loss_function_param': loss_function_param,
             'class': 'StandardClassifierWithNoise'
         }
 
@@ -115,6 +114,7 @@ class StandardClassifierWithNoise(BaseClassifier):
         self.add_noise = add_noise
         self.noise_type = noise_type
         self.noise_std = noise_std
+        self.loss_function_param = loss_function_param
 
         # initialize the network
         self.repr_net = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
@@ -146,14 +146,10 @@ class StandardClassifierWithNoise(BaseClassifier):
         y = labels[0].to(self.device)
 
         # classification loss
-        if self.loss_function == 'ce':
-            classifier_loss = F.cross_entropy(input=pred, target=y)
-        if self.loss_function == 'mse':
-            y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
-            classifier_loss = losses.mse(y_one_hot, torch.softmax(pred, dim=1))
-        if self.loss_function == 'mae':
-            y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
-            classifier_loss = losses.mae(y_one_hot, torch.softmax(pred, dim=1))
+        y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
+        classifier_loss = losses.get_classification_loss(target=y_one_hot, pred=pred,
+                                                         loss_function=self.loss_function,
+                                                         loss_function_param=self.loss_function_param)
 
         batch_losses = {
             'classifier': classifier_loss,

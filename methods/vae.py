@@ -81,7 +81,7 @@ class VAE(torch.nn.Module):
 
         eps = 1e-6
         target = torch.clamp(self.revert_normalization(info['x']), eps, 1-eps)
-        recon_loss = losses.binary_cross_entropy(x=target, x_rec=info['x_rec'])
+        recon_loss = losses.binary_cross_entropy(target=target, pred=info['x_rec'])
         kl_loss = self.encoder.kl_divergence(info)
 
         batch_losses = {

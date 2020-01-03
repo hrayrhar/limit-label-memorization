@@ -36,6 +36,7 @@ def main():
     parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier')
     parser.add_argument('--loss_function', type=str, default='ce',
                         choices=['ce', 'mse', 'mae'])
+    parser.add_argument('--loss_function_param', type=float, default=1.0)
     parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
     parser.add_argument('--grad_l1_penalty', '-S', type=float, default=0.0)
     parser.add_argument('--lamb', type=float, default=1.0)
@@ -92,6 +93,7 @@ def main():
                         sample_from_q=args.sample_from_q,
                         q_dist=args.q_dist,
                         loss_function=args.loss_function,
+                        loss_function_param=args.loss_function_param,
                         add_noise=args.add_noise,
                         noise_type=args.noise_type,
                         noise_std=args.noise_std)
