@@ -36,8 +36,10 @@ def gce(target, pred, q=1.0):
 
 def dmi(target, pred):
     # L_DMI of https://arxiv.org/pdf/1909.03388.pdf
+    # mat = torch.mm(target.T, pred) / target.shape[0]  # normalizing makes the determinant too small
     mat = torch.mm(target.T, pred)
-    return -torch.log(torch.abs(torch.det(mat)) + 0.001)
+    # return -torch.log(torch.abs(torch.det(mat)) + 0.001)
+    return -torch.log(torch.abs(torch.det(mat)))
 
 
 def get_classification_loss(target, pred, loss_function='ce', loss_function_param=None):
