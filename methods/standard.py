@@ -1,4 +1,4 @@
-from modules import nn_utils, losses, pretrained_models
+from modules import nn_utils, losses, pretrained_models, utils
 import torch
 import torch.nn.functional as F
 from methods import BaseClassifier
@@ -11,7 +11,7 @@ class StandardClassifier(BaseClassifier):
     """
     def __init__(self, input_shape, architecture_args, pretrained_arg=None,
                  device='cuda', loss_function='ce', add_noise=False, noise_type='Gaussian',
-                 noise_std=0.0, loss_function_param=None, **kwargs):
+                 noise_std=0.0, loss_function_param=None, load_from=None, **kwargs):
         super(StandardClassifier, self).__init__(**kwargs)
 
         self.args = {
@@ -24,6 +24,7 @@ class StandardClassifier(BaseClassifier):
             'noise_type': noise_type,
             'noise_std': noise_std,
             'loss_function_param': loss_function_param,
+            'load_from': load_from,
             'class': 'StandardClassifier'
         }
 
@@ -37,6 +38,7 @@ class StandardClassifier(BaseClassifier):
         self.noise_type = noise_type
         self.noise_std = noise_std
         self.loss_function_param = loss_function_param
+        self.load_from = load_from
 
         # initialize the network
         self.repr_net = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
@@ -46,6 +48,13 @@ class StandardClassifier(BaseClassifier):
         self.num_classes = output_shape[-1]
         self.classifier = self.classifier.to(self.device)
         self.grad_noise_class = nn_utils.get_grad_noise_class(standard_dev=noise_std, q_dist=noise_type)
+
+        if self.load_from is not None:
+            print("Loading the classifier model from {}".format(load_from))
+            stored_net = utils.load(load_from, device='cpu')
+            stored_net_params = dict(stored_net.classifier.named_parameters())
+            for key, param in self.classifier.named_parameters():
+                param.data = stored_net_params[key].data.to(self.device)
 
         print(self)
 

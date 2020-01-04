@@ -15,7 +15,7 @@ def main():
     parser.add_argument('--batch_size', '-b', type=int, default=256)
     parser.add_argument('--epochs', '-e', type=int, default=400)
     parser.add_argument('--save_iter', '-s', type=int, default=10)
-    parser.add_argument('--vis_iter', '-v', type=int, default=4)
+    parser.add_argument('--vis_iter', '-v', type=int, default=10)
     parser.add_argument('--log_dir', '-l', type=str, default=None)
 
     parser.add_argument('--dataset', '-D', type=str, default='mnist',
@@ -37,6 +37,7 @@ def main():
     parser.add_argument('--loss_function', type=str, default='ce',
                         choices=['ce', 'mse', 'mae', 'gce', 'dmi'])
     parser.add_argument('--loss_function_param', type=float, default=1.0)
+    parser.add_argument('--load_from', type=str, default=None)
     parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
     parser.add_argument('--grad_l1_penalty', '-S', type=float, default=0.0)
     parser.add_argument('--lamb', type=float, default=1.0)
@@ -93,6 +94,7 @@ def main():
                         small_qtop=args.small_qtop,
                         sample_from_q=args.sample_from_q,
                         q_dist=args.q_dist,
+                        load_from=args.load_from,
                         loss_function=args.loss_function,
                         loss_function_param=args.loss_function_param,
                         add_noise=args.add_noise,
