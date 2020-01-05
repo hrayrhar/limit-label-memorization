@@ -36,12 +36,12 @@ def reconstruction_plot(model, train_data, val_data, n_samples=5, plt=None):
     model.eval()
     if plt is None:
         plt = pyplot
-    train_data = [train_data[i][0] for i in range(n_samples)]
-    val_data = [val_data[i][0] for i in range(n_samples)]
-    samples = torch.stack(train_data + val_data, dim=0)
-    samples = revert_normalization(samples, train_data)
+    train_samples = [train_data[i][0] for i in range(n_samples)]
+    val_samples = [val_data[i][0] for i in range(n_samples)]
+    samples = torch.stack(train_samples + val_samples, dim=0)
     x_rec = model(inputs=[samples])['x_rec']
     x_rec = x_rec.reshape(samples.shape)
+    samples = revert_normalization(samples, train_data)
     samples = utils.to_numpy(samples)
     x_rec = utils.to_numpy(x_rec)
     fig, ax = plt.subplots(nrows=2 * n_samples, ncols=2, figsize=(2, 2 * n_samples))

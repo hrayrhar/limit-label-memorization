@@ -66,10 +66,15 @@ def parse_feed_forward(args, input_shape):
             output_shape = infer_shape([net], input_shape)
             print("output.shape:", output_shape)
             return net, output_shape
-    if isinstance(args, dict):
         if args['net'] == 'resnet-clothing1M':
             from torchvision.models import resnet50
             net = resnet50(num_classes=14)
+            output_shape = infer_shape([net], input_shape)
+            print("output.shape:", output_shape)
+            return net, output_shape
+        if args['net'] == 'resnet34-clothing1M':
+            from torchvision.models import resnet34
+            net = resnet34(num_classes=14)
             output_shape = infer_shape([net], input_shape)
             print("output.shape:", output_shape)
             return net, output_shape

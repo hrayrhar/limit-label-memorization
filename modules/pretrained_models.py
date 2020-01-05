@@ -53,7 +53,7 @@ class PretrainedVAE(torch.nn.Module):
             params[name].requires_grad = False
 
     def forward(self, x):
-        return self.vae.forward(x, sampling=False, grad_enabled=True)['z']
+        return self.vae.forward(inputs=[x], sampling=False, grad_enabled=True)['z']
 
 
 class Identity(torch.nn.Module):

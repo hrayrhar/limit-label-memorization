@@ -28,22 +28,19 @@ def main():
                         choices=['flip', 'error', 'cifar10_custom'])
     parser.add_argument('--transform_function', type=str, default=None,
                         choices=[None, 'remove_random_chunks'])
-    parser.add_argument('--transform_validation', dest='transform_validation', action='store_true')
-    parser.add_argument('--no-transform_validation', dest='transform_validation', action='store_false')
-    parser.set_defaults(transform_validation=True)
+    parser.add_argument('--clean_validation', dest='clean_validation', action='store_true')
+    parser.set_defaults(clean_validation=False)
     parser.add_argument('--remove_prob', type=float, default=0.5)
 
     parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier')
     parser.add_argument('--loss_function', type=str, default='ce',
-                        choices=['ce', 'mse', 'mae', 'gce', 'dmi'])
+                        choices=['ce', 'mse', 'mae', 'gce', 'dmi', 'none'])
     parser.add_argument('--loss_function_param', type=float, default=1.0)
     parser.add_argument('--load_from', type=str, default=None)
     parser.add_argument('--grad_weight_decay', '-L', type=float, default=0.0)
     parser.add_argument('--grad_l1_penalty', '-S', type=float, default=0.0)
     parser.add_argument('--lamb', type=float, default=1.0)
     parser.add_argument('--pretrained_arg', '-r', type=str, default=None)
-    parser.add_argument('--small_qtop', action='store_true', dest='small_qtop')
-    parser.set_defaults(small_qtop=False)
     parser.add_argument('--sample_from_q', action='store_true', dest='sample_from_q')
     parser.set_defaults(sample_from_q=False)
     parser.add_argument('--q_dist', type=str, default='Gaussian', choices=['Gaussian', 'Laplace', 'dot'])
@@ -91,7 +88,6 @@ def main():
                         grad_weight_decay=args.grad_weight_decay,
                         grad_l1_penalty=args.grad_l1_penalty,
                         lamb=args.lamb,
-                        small_qtop=args.small_qtop,
                         sample_from_q=args.sample_from_q,
                         q_dist=args.q_dist,
                         load_from=args.load_from,
@@ -110,13 +106,6 @@ def main():
                    optimization_args=optimization_args,
                    log_dir=args.log_dir,
                    args_to_log=args)
-
-    # do final visualizations
-    if hasattr(model, 'visualize'):
-        visualizations = model.visualize(train_loader, val_loader)
-
-        for name, fig in visualizations.items():
-            vis.savefig(fig, os.path.join(args.log_dir, name, 'final.png'))
 
 
 if __name__ == '__main__':

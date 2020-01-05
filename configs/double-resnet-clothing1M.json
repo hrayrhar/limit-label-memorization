@@ -2,7 +2,7 @@
   "classifier": {
     "net": "resnet-clothing1M"
   },
-  "q-base": {
+  "q-network": {
     "net": "resnet-clothing1M"
   }
 }

@@ -1,0 +1,8 @@
+{
+  "classifier": {
+    "net": "resnet34-clothing1M"
+  },
+  "q-network": {
+    "net": "resnet34-clothing1M"
+  }
+}

@@ -48,6 +48,17 @@ def cifar10_custom_confusion_matrix(n_classes, error_prob):
     return cf
 
 
+def corrupt_labels(dataset, indices, noise_level, confusion_function, n_classes):
+    is_corrupted = np.zeros(len(dataset), dtype=int)  # 0 clean, 1 corrupted
+    cf = confusion_function(n_classes=n_classes, error_prob=noise_level)
+    for current_idx, sample_idx in enumerate(indices):
+        label = dataset.dataset.targets[sample_idx]
+        new_label = int(np.random.choice(n_classes, 1, p=np.array(cf[label])))
+        dataset.dataset.targets[sample_idx] = new_label
+        is_corrupted[current_idx] = (label != new_label)
+    return is_corrupted
+
+
 def remove_random_chunks(x, prob):
     """ Divide the image into 4x4 patches and remove patches randomly.
     """
@@ -84,7 +95,8 @@ def revert_normalization(samples, dataset):
 
 
 def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, transform_function=None,
-                        transform_validation=False, num_train_examples=None, seed=42):
+                        num_train_examples=None, clean_validation=False,
+                        confusion_function=uniform_flip_confusion_matrix, seed=42):
     data_dir = os.path.join(os.path.dirname(__file__), '../data/mnist/')
 
     # Add normalization. This is done so that models pretrained on ImageNet work well.
@@ -109,16 +121,10 @@ def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, transform_function=None,
         dataset.dataset_name = 'mnist'
         dataset.statistics = (means, stds)
 
-    # corrupt noise_level percent of the training labels
-    is_corrupted = np.zeros(len(train_data), dtype=int)  # 0 clean, 1 corrupted, 2 accidentally correct
-    for current_idx, sample_idx in enumerate(train_indices):
-        if np.random.uniform(0, 1) < noise_level:
-            new_label = np.random.randint(10)
-            if new_label == train_data.dataset.targets[sample_idx]:
-                is_corrupted[current_idx] = 2
-            else:
-                is_corrupted[current_idx] = 1
-            train_data.dataset.targets[sample_idx] = new_label
+    # corrupt the labels if needed
+    is_corrupted = corrupt_labels(train_data, train_indices, noise_level, confusion_function, n_classes=10)
+    if not clean_validation:
+        _ = corrupt_labels(val_data, val_indices, noise_level, confusion_function, n_classes=10)
 
     # modify images if needed
     if transform_function is not None:
@@ -126,7 +132,7 @@ def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, transform_function=None,
         for sample_idx in train_data.indices:
             train_data.dataset.data[sample_idx] = transform_function(train_data.dataset.data[sample_idx])
 
-        if transform_validation:
+        if not clean_validation:
             # transform validation samples
             for sample_idx in val_data.indices:
                 val_data.dataset.data[sample_idx] = transform_function(val_data.dataset.data[sample_idx])
@@ -140,10 +146,11 @@ def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, transform_function=None,
 
 def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
                        drop_last=False, num_train_examples=None, transform_function=None,
-                       transform_validation=False):
+                       clean_validation=False, confusion_function=uniform_flip_confusion_matrix):
     train_data, val_data, test_data, _ = load_mnist_datasets(
         val_ratio=val_ratio, noise_level=noise_level, transform_function=transform_function,
-        transform_validation=transform_validation, num_train_examples=num_train_examples, seed=seed)
+        clean_validation=clean_validation, num_train_examples=num_train_examples,
+        confusion_function=confusion_function, seed=seed)
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True,
                               num_workers=4, drop_last=drop_last)
@@ -157,7 +164,7 @@ def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
 
 def load_cifar10_datasets(val_ratio=0.2, noise_level=0.0, data_augmentation=False,
                           confusion_function=uniform_flip_confusion_matrix,
-                          num_train_examples=None, seed=42):
+                          num_train_examples=None, clean_validation=False, seed=42):
     data_dir = os.path.join(os.path.dirname(__file__), '../data/cifar10/')
 
     data_augmentation_transforms = []
@@ -191,25 +198,22 @@ def load_cifar10_datasets(val_ratio=0.2, noise_level=0.0, data_augmentation=Fals
         dataset.statistics = (means, stds)
 
     # corrupt the labels if needed
-    is_corrupted = np.zeros(len(train_data), dtype=int)  # 0 clean, 1 corrupted
-    cf = confusion_function(n_classes=10, error_prob=noise_level)
-    for current_idx, sample_idx in enumerate(train_indices):
-        label = train_data.dataset.targets[sample_idx]
-        new_label = int(np.random.choice(10, 1, p=np.array(cf[label])))
-        train_data.dataset.targets[sample_idx] = new_label
-        is_corrupted[current_idx] = (label != new_label)
+    is_corrupted = corrupt_labels(train_data, train_indices, noise_level, confusion_function, n_classes=10)
+    if not clean_validation:
+        _ = corrupt_labels(val_data, val_indices, noise_level, confusion_function, n_classes=10)
 
     return train_data, val_data, test_data, is_corrupted
 
 
 def load_cifar10_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
                          drop_last=False, num_train_examples=None, data_augmentation=False,
-                         confusion_function=uniform_flip_confusion_matrix):
+                         confusion_function=uniform_flip_confusion_matrix, clean_validation=False):
     train_data, val_data, test_data, _ = load_cifar10_datasets(val_ratio=val_ratio,
                                                                noise_level=noise_level,
                                                                data_augmentation=data_augmentation,
                                                                confusion_function=confusion_function,
                                                                num_train_examples=num_train_examples,
+                                                               clean_validation=clean_validation,
                                                                seed=seed)
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True,
@@ -324,7 +328,8 @@ def load_data_from_arguments(args):
         train_loader, val_loader, test_loader = load_mnist_loaders(
             batch_size=args.batch_size, noise_level=args.label_noise_level,
             transform_function=transform_function,
-            transform_validation=args.transform_validation,
+            clean_validation=args.clean_validation,
+            confusion_function=confusion_function,
             num_train_examples=args.num_train_examples)
 
     if args.dataset == 'cifar10':
@@ -332,7 +337,8 @@ def load_data_from_arguments(args):
             batch_size=args.batch_size, noise_level=args.label_noise_level,
             num_train_examples=args.num_train_examples,
             data_augmentation=args.data_augmentation,
-            confusion_function=confusion_function)
+            confusion_function=confusion_function,
+            clean_validation=args.clean_validation)
 
     if args.dataset == 'clothing1M':
         train_loader, val_loader, test_loader = load_clothing1M_loaders(

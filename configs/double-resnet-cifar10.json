@@ -2,7 +2,7 @@
   "classifier": {
     "net": "resnet-cifar10"
   },
-  "q-base": {
+  "q-network": {
     "net": "resnet-cifar10"
   }
 }

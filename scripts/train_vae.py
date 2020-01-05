@@ -21,13 +21,15 @@ def main():
     parser.add_argument('--dataset', '-D', type=str, default='mnist',
                         choices=['mnist', 'cifar10'])
     parser.add_argument('--data_augmentation', '-A', action='store_true', dest='data_augmentation')
+    parser.set_defaults(data_augmentation=False)
     parser.add_argument('--num_train_examples', type=int, default=None)
-    parser.add_argument('--noise_level', '-n', type=float, default=0.0)
+    parser.add_argument('--label_noise_level', '-n', type=float, default=0.0)
+    parser.add_argument('--label_noise_type', type=str, default='flip',
+                        choices=['flip', 'error', 'cifar10_custom'])
     parser.add_argument('--transform_function', type=str, default=None,
                         choices=[None, 'remove_random_chunks'])
-    parser.add_argument('--transform_validation', dest='transform_validation', action='store_true')
-    parser.add_argument('--no-transform_validation', dest='transform_validation', action='store_false')
-    parser.set_defaults(transform_validation=True)
+    parser.add_argument('--clean_validation', dest='clean_validation', action='store_true')
+    parser.set_defaults(clean_validation=False)
     parser.add_argument('--remove_prob', type=float, default=0.5)
 
     args = parser.parse_args()
@@ -62,13 +64,6 @@ def main():
                    vis_iter=args.vis_iter,
                    optimization_args=optimization_args,
                    log_dir=args.log_dir)
-
-    # do final visualizations
-    if hasattr(model, 'visualize'):
-        visualizations = model.visualize(train_loader, val_loader)
-
-        for name, fig in visualizations.items():
-            vis.savefig(fig, os.path.join(args.log_dir, name, 'final.png'))
 
 
 if __name__ == '__main__':
