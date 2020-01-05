@@ -189,12 +189,15 @@ def ce_gradient_norm_histogram(model, data_loader, tensorboard, epoch, name, max
     pred = utils.apply_on_dataset(model=model, dataset=data_loader.dataset,
                                   output_keys_regexp='pred', description='grad-histogram:pred',
                                   max_num_examples=max_num_examples)['pred']
-    labels = [p[1] for p in data_loader.dataset]
+    n_examples = min(len(data_loader.dataset), max_num_examples)
+    labels = []
+    for idx in range(n_examples):
+        labels.append(data_loader.dataset[idx][1])
     labels = torch.tensor(labels, dtype=torch.long)
     labels = F.one_hot(labels, num_classes=model.num_classes).float()
     labels = utils.to_cpu(labels)
 
-    grad_wrt_logits = torch.softmax(pred, dim=-1)[:max_num_examples] - labels[:max_num_examples]
+    grad_wrt_logits = torch.softmax(pred, dim=-1) - labels
     grad_norms = torch.sum(grad_wrt_logits**2, dim=-1)
     grad_norms = utils.to_numpy(grad_norms)
     tensorboard.add_histogram(tag=name, values=grad_norms, global_step=epoch)
@@ -209,11 +212,14 @@ def ce_gradient_pair_scatter(model, data_loader, d1=0, d2=1, max_num_examples=20
                                   output_keys_regexp='pred',
                                   max_num_examples=max_num_examples,
                                   description='grad-pair-scatter:pred')['pred']
-    labels = [p[1] for p in data_loader.dataset]
+    n_examples = min(len(data_loader.dataset), max_num_examples)
+    labels = []
+    for idx in range(n_examples):
+        labels.append(data_loader.dataset[idx][1])
     labels = torch.tensor(labels, dtype=torch.long)
     labels = F.one_hot(labels, num_classes=model.num_classes).float()
     labels = utils.to_cpu(labels)
-    grad_wrt_logits = torch.softmax(pred, dim=-1)[:max_num_examples] - labels[:max_num_examples]
+    grad_wrt_logits = torch.softmax(pred, dim=-1) - labels
     grad_wrt_logits = utils.to_numpy(grad_wrt_logits)
 
     fig, ax = plt.subplots(1, figsize=(5, 5))
