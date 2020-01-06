@@ -156,4 +156,3 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
     # save the final version of the network
     utils.save(model=model, optimizer=optimizer, scheduler=scheduler,
                path=os.path.join(log_dir, 'checkpoints', 'final.mdl'))
-

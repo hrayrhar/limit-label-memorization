@@ -1,8 +1,11 @@
 import methods
-from modules import training
+from modules import training, utils
 import modules.data_utils as datasets
 import argparse
+import pickle
+import torch
 import json
+import os
 
 
 def main():
@@ -105,6 +108,21 @@ def main():
                    optimization_args=optimization_args,
                    log_dir=args.log_dir,
                    args_to_log=args)
+
+    # if training finishes successfully, compute the test score
+    model = utils.load(os.path.join(args.log_dir, 'checkpoints', 'best_val.mdl'),
+                       device=args.device)
+    pred = utils.apply_on_dataset(model, test_loader.dataset, batch_size=args.batch_size,
+                                  output_keys_regexp='pred')['pred']
+    labels = [p[1] for p in test_loader.dataset]
+    labels = torch.tensor(labels, dtype=torch.long)
+    labels = utils.to_cpu(labels)
+    with open(os.path.join(args.log_dir, 'test_predictions.pkl'), 'wb') as f:
+        pickle.dump({'pred': pred, 'labels': labels}, f)
+
+    accuracy = torch.mean(pred.argmax(dim=1) == labels)
+    with open(os.path.join(args.log_dir, 'test_accuracy.txt', 'w')) as f:
+        f.write("{}\n".format(accuracy))
 
 
 if __name__ == '__main__':
