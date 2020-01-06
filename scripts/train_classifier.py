@@ -110,10 +110,11 @@ def main():
                    args_to_log=args)
 
     # if training finishes successfully, compute the test score
+    print("Testing the best validation model...")
     model = utils.load(os.path.join(args.log_dir, 'checkpoints', 'best_val.mdl'),
                        device=args.device)
     pred = utils.apply_on_dataset(model, test_loader.dataset, batch_size=args.batch_size,
-                                  output_keys_regexp='pred')['pred']
+                                  output_keys_regexp='pred', description='Testing')['pred']
     labels = [p[1] for p in test_loader.dataset]
     labels = torch.tensor(labels, dtype=torch.long)
     labels = utils.to_cpu(labels)
