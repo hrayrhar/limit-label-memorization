@@ -122,7 +122,7 @@ def main():
         pickle.dump({'pred': pred, 'labels': labels}, f)
 
     accuracy = torch.mean((pred.argmax(dim=1) == labels).float())
-    with open(os.path.join(args.log_dir, 'test_accuracy.txt', 'w')) as f:
+    with open(os.path.join(args.log_dir, 'test_accuracy.txt'), 'w') as f:
         f.write("{}\n".format(accuracy))
 
 
