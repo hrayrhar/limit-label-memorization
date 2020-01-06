@@ -1,10 +1,8 @@
 from methods.vae import VAE
 from modules import training
 import modules.data_utils as datasets
-import modules.visualization as vis
 import argparse
 import json
-import os
 
 
 def main():
@@ -17,6 +15,7 @@ def main():
     parser.add_argument('--save_iter', '-s', type=int, default=10)
     parser.add_argument('--vis_iter', '-v', type=int, default=10)
     parser.add_argument('--log_dir', '-l', type=str, default=None)
+    parser.add_argument('--seed', type=int, default=42)
 
     parser.add_argument('--dataset', '-D', type=str, default='mnist',
                         choices=['mnist', 'cifar10'])

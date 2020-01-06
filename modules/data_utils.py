@@ -330,7 +330,8 @@ def load_data_from_arguments(args):
             transform_function=transform_function,
             clean_validation=args.clean_validation,
             confusion_function=confusion_function,
-            num_train_examples=args.num_train_examples)
+            num_train_examples=args.num_train_examples,
+            seed=args.seed)
 
     if args.dataset == 'cifar10':
         train_loader, val_loader, test_loader = load_cifar10_loaders(
@@ -338,13 +339,15 @@ def load_data_from_arguments(args):
             num_train_examples=args.num_train_examples,
             data_augmentation=args.data_augmentation,
             confusion_function=confusion_function,
-            clean_validation=args.clean_validation)
+            clean_validation=args.clean_validation,
+            seed=args.seed)
 
     if args.dataset == 'clothing1M':
         train_loader, val_loader, test_loader = load_clothing1M_loaders(
             batch_size=args.batch_size,
             num_train_examples=args.num_train_examples,
-            data_augmentation=args.data_augmentation)
+            data_augmentation=args.data_augmentation,
+            seed=args.seed)
 
     example_shape = train_loader.dataset[0][0].shape
     print("Dataset is loaded:\n\ttrain_samples: {}\n\tval_samples: {}\n\t"
