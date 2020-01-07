@@ -39,7 +39,7 @@ class PredictGradOutput(PredictGradBaseClassifier):
     """
     def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
                  grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, sample_from_q=False,
-                 q_dist='Gaussian', loss_function='ce', **kwargs):
+                 q_dist='Gaussian', loss_function='ce', detach=True, **kwargs):
         super(PredictGradOutput, self).__init__(**kwargs)
 
         self.args = {
@@ -53,6 +53,7 @@ class PredictGradOutput(PredictGradBaseClassifier):
             'sample_from_q': sample_from_q,
             'q_dist': q_dist,
             'loss_function': loss_function,
+            'detach': detach,
             'class': 'PredictGradOutput'
         }
 
@@ -66,6 +67,7 @@ class PredictGradOutput(PredictGradBaseClassifier):
         self.lamb = lamb
         self.sample_from_q = sample_from_q
         self.q_dist = q_dist
+        self.detach = detach
         self.loss_function = loss_function
 
         # lamb is the coefficient in front of the H(p,q) term. It controls the variance of predicted gradients.
@@ -121,7 +123,11 @@ class PredictGradOutput(PredictGradBaseClassifier):
         # predict the gradient wrt to logits
         q_label_pred = self.q_network(x)
         q_label_pred_softmax = torch.softmax(q_label_pred, dim=1)
-        pred_softmax = torch.softmax(pred, dim=1).detach()  # NOTE: we detach here
+        if self.detach:
+            # NOTE: we detach here too, so that the classifier is trained using the predicted gradient only
+            pred_softmax = torch.softmax(pred, dim=1).detach()
+        else:
+            pred_softmax = torch.softmax(pred, dim=1)
         if self.loss_function == 'ce':
             grad_pred = pred_softmax - q_label_pred_softmax
         elif self.loss_function == 'mae':
@@ -158,8 +164,11 @@ class PredictGradOutput(PredictGradBaseClassifier):
         classifier_loss = F.cross_entropy(input=info['pred'], target=y)
 
         # compute grad actual
-        # NOTE: we detach here too, so that the classifier is trained using the predicted gradient only
-        pred_softmax = torch.softmax(pred_before.detach(), dim=1)
+        if self.detach:
+            # NOTE: we detach here too, so that the classifier is trained using the predicted gradient only
+            pred_softmax = torch.softmax(pred_before.detach(), dim=1)
+        else:
+            pred_softmax = torch.softmax(pred_before, dim=1)
         if self.loss_function in ['ce', 'none']:
             grad_actual = pred_softmax - y_one_hot
         elif self.loss_function == 'mae':

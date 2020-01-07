@@ -46,6 +46,8 @@ def main():
     parser.add_argument('--sample_from_q', action='store_true', dest='sample_from_q')
     parser.set_defaults(sample_from_q=False)
     parser.add_argument('--q_dist', type=str, default='Gaussian', choices=['Gaussian', 'Laplace', 'dot'])
+    parser.add_argument('--no-detach', dest='detach', action='store_false')
+    parser.set_defaults(detach=True)
 
     parser.add_argument('--add_noise', action='store_true', dest='add_noise',
                         help='add noise to the gradients of a standard classifier.')
@@ -97,7 +99,8 @@ def main():
                         loss_function_param=args.loss_function_param,
                         add_noise=args.add_noise,
                         noise_type=args.noise_type,
-                        noise_std=args.noise_std)
+                        noise_std=args.noise_std,
+                        detach=args.detach)
 
     training.train(model=model,
                    train_loader=train_loader,
