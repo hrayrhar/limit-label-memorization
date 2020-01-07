@@ -154,9 +154,9 @@ def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True,
                               num_workers=4, drop_last=drop_last)
-    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=True,
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False,
                             num_workers=4, drop_last=drop_last)
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True,
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False,
                              num_workers=4, drop_last=drop_last)
 
     return train_loader, val_loader, test_loader
@@ -218,9 +218,9 @@ def load_cifar10_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True,
                               num_workers=4, drop_last=drop_last)
-    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=True,
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False,
                             num_workers=4, drop_last=drop_last)
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True,
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False,
                              num_workers=4, drop_last=drop_last)
 
     return train_loader, val_loader, test_loader
@@ -255,7 +255,7 @@ class Clothing1M(Dataset):
         with open(flist, 'r') as rf:
             for line in rf.readlines():
                 row = line.split(" ")
-                impath =  self.root + row[0]
+                impath = self.root + row[0]
                 imlabel = row[1]
                 imlist.append((impath, int(imlabel)))
         return imlist
@@ -303,9 +303,9 @@ def load_clothing1M_loaders(batch_size=128, drop_last=False, num_train_examples=
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True,
                               num_workers=32, drop_last=drop_last)
-    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=True,
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False,
                             num_workers=32, drop_last=drop_last)
-    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True,
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False,
                              num_workers=32, drop_last=drop_last)
 
     return train_loader, val_loader, test_loader
