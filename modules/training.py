@@ -86,7 +86,7 @@ def run_partition(model, epoch, tensorboard, optimizer, loader, partition, train
 
 
 def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
-          optimization_args=None, log_dir=None, args_to_log=None):
+          optimization_args=None, log_dir=None, args_to_log=None, stopping_param=50):
     """ Trains the model. Validation loader can be none.
     Assumptions:
     1. loaders return (batch_inputs, batch_labels), where both can be lists or torch.Tensors
@@ -106,6 +106,7 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
     optimizer = build_optimizer(model.parameters(), optimization_args)
     scheduler = build_scheduler(optimizer, optimization_args)
 
+    last_best_epoch = 0  # this is used to shut down training if its performance is degraded
     for epoch in range(epochs):
         t0 = time.time()
 
@@ -140,12 +141,17 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
             utils.save(model=model, optimizer=optimizer, scheduler=scheduler,
                        path=os.path.join(log_dir, 'checkpoints', 'epoch{}.mdl'.format(epoch)))
 
-        # save the model if it gives the best validation score
+        # save the model if it gives the best validation score and stop the training if needed
         if hasattr(model, 'is_best_val_result'):
             if model.is_best_val_result():
+                last_best_epoch = epoch
                 print("This is the best validation result so far. Saving the model ...")
                 utils.save(model=model, optimizer=optimizer, scheduler=scheduler,
                            path=os.path.join(log_dir, 'checkpoints', 'best_val.mdl'))
+
+            # stop the training if the best result was not updated in the last 50 epochs
+            if epoch - last_best_epoch >= stopping_param:
+                break
 
         # update the learning rate
         scheduler.step()
