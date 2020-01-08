@@ -4,6 +4,7 @@ from torch import optim
 from modules import utils
 from tqdm import tqdm
 import os
+import pickle
 import time
 import numpy as np
 import torch
@@ -101,7 +102,11 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
 
     tensorboard = SummaryWriter(log_dir)
     print("Visualize logs using: tensorboard --logdir={0}".format(log_dir))
+
+    # add args_to_log to tensorboard, but also store it separately for easier access
     tensorboard.add_text('script arguments', repr(args_to_log))
+    with open(os.path.join(log_dir, 'args.pkl'), 'wb') as f:
+        pickle.dump(args_to_log, f)
 
     optimizer = build_optimizer(model.parameters(), optimization_args)
     scheduler = build_scheduler(optimizer, optimization_args)
