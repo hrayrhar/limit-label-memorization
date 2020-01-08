@@ -200,7 +200,11 @@ def ce_gradient_norm_histogram(model, data_loader, tensorboard, epoch, name, max
     grad_wrt_logits = torch.softmax(pred, dim=-1) - labels
     grad_norms = torch.sum(grad_wrt_logits**2, dim=-1)
     grad_norms = utils.to_numpy(grad_norms)
-    tensorboard.add_histogram(tag=name, values=grad_norms, global_step=epoch)
+
+    try:
+        tensorboard.add_histogram(tag=name, values=grad_norms, global_step=epoch)
+    except ValueError as e:
+        print("Tensorboard histogram error: {}".format(e))
 
 
 def ce_gradient_pair_scatter(model, data_loader, d1=0, d2=1, max_num_examples=2000, plt=None):
@@ -241,7 +245,11 @@ def pred_gradient_norm_histogram(model, data_loader, tensorboard, epoch, name, m
                                        max_num_examples=max_num_examples)['grad_pred']
     grad_norms = torch.sum(grad_pred**2, dim=-1)
     grad_norms = utils.to_numpy(grad_norms)
-    tensorboard.add_histogram(tag=name, values=grad_norms, global_step=epoch)
+
+    try:
+        tensorboard.add_histogram(tag=name, values=grad_norms, global_step=epoch)
+    except ValueError as e:
+        print("Tensorboard histogram error: {}".format(e))
 
 
 def pred_gradient_pair_scatter(model, data_loader, d1=0, d2=1, max_num_examples=2000, plt=None):
