@@ -36,7 +36,7 @@ class BaseClassifier(torch.nn.Module):
         tensorboard.add_scalar('metrics/{}_accuracy'.format(partition), accuracy, epoch)
 
     def is_best_val_result(self, **kwargs):
-        return self._is_best_so_far
+        return self._is_best_so_far, self._best_val_accuracy
 
     def before_weight_update(self, **kwargs):
         pass

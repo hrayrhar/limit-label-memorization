@@ -148,11 +148,16 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
 
         # save the model if it gives the best validation score and stop the training if needed
         if hasattr(model, 'is_best_val_result'):
-            if model.is_best_val_result():
+            is_best_val, best_val_result = model.is_best_val_result()
+            if is_best_val:
                 last_best_epoch = epoch
                 print("This is the best validation result so far. Saving the model ...")
                 utils.save(model=model, optimizer=optimizer, scheduler=scheduler,
                            path=os.path.join(log_dir, 'checkpoints', 'best_val.mdl'))
+
+                # save the validation result for doing model selection later
+                with open(os.path.join(log_dir, 'best_val_result.txt'), 'w') as f:
+                    f.write("{}\n".format(best_val_result))
 
             # stop the training if the best result was not updated in the last 50 epochs
             if epoch - last_best_epoch >= stopping_param:
