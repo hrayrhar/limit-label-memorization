@@ -42,6 +42,14 @@ def dmi(target, pred):
     return -torch.log(torch.abs(torch.det(mat)))
 
 
+def fw(target, pred, T_est):
+    # Forward loss function of https://arxiv.org/pdf/1609.03683.pdf.
+    # The code is adapted from the original implementation.
+    eps = 1e-10
+    pred = torch.clamp(pred, eps, 1 - eps)
+    return -torch.sum(target * torch.log(torch.mm(pred, T_est)), dim=1).mean(dim=0)
+
+
 def get_classification_loss(target, pred, loss_function='ce', loss_function_param=None):
     """
     :param target: one-hot encoded vector
@@ -59,4 +67,6 @@ def get_classification_loss(target, pred, loss_function='ce', loss_function_para
         return gce(target, torch.softmax(pred, dim=1), q=loss_function_param)
     if loss_function == 'dmi':
         return dmi(target, torch.softmax(pred, dim=1))
+    if loss_function == 'fw':
+        return fw(target, torch.softmax(pred, dim=1), T_est=loss_function_param)
     raise NotImplementedError()

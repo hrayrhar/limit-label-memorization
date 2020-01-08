@@ -30,7 +30,7 @@ def build_scheduler(optimizer, optimization_args):
 
 def run_partition(model, epoch, tensorboard, optimizer, loader, partition, training):
     if hasattr(model, 'on_epoch_start'):
-        model.on_epoch_start(epoch=epoch, tensorboard=tensorboard, partition=partition)
+        model.on_epoch_start(epoch=epoch, tensorboard=tensorboard, partition=partition, loader=loader)
 
     losses = defaultdict(list)
     total_number_samples = 0

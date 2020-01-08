@@ -1,4 +1,4 @@
-from modules import nn_utils, losses, pretrained_models, utils
+from modules import nn_utils, losses, pretrained_models, utils, baseline_utils
 import torch
 import torch.nn.functional as F
 from methods import BaseClassifier
@@ -57,6 +57,16 @@ class StandardClassifier(BaseClassifier):
                 param.data = stored_net_params[key].data.to(self.device)
 
         print(self)
+
+    def on_epoch_start(self, partition, epoch, loader, **kwargs):
+        super(StandardClassifier, self).on_epoch_start(partition=partition, epoch=epoch,
+                                                       loader=loader, **kwargs)
+
+        # In case of FW model, estimate the transition matrix and pass it to the model
+        if partition == 'train' and epoch == 0 and self.loss_function == 'fw':
+            T_est = baseline_utils.estimate_transition(load_from=self.load_from, data_loader=loader,
+                                                       device=self.device)
+            self.loss_function_param = T_est
 
     def forward(self, inputs, grad_enabled=False, **kwargs):
         torch.set_grad_enabled(grad_enabled)
