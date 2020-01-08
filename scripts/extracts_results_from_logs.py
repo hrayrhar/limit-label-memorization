@@ -23,7 +23,15 @@ def main():
 
         with open(os.path.join(args.log_dir, instance, 'test_accuracy.txt'), 'r') as f:
             test_acc = float(f.read())
-            result['accuracy'] = test_acc
+            result['test_accuracy'] = test_acc
+
+        val_result_file_path = os.path.join(args.log_dir, instance, 'best_val_result.txt')
+        if os.path.exists(val_result_file_path):
+            with open(val_result_file_path, 'r') as f:
+                val_acc = float(f.read())
+        else:
+            val_acc = -1.0
+        result['val_accuracy'] = val_acc
 
         df = df.append(result, ignore_index=True)
 
