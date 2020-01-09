@@ -15,6 +15,7 @@ def main():
 
     parser.add_argument('--batch_size', '-b', type=int, default=256)
     parser.add_argument('--epochs', '-e', type=int, default=400)
+    parser.add_argument('--stopping_param', type=int, default=50)
     parser.add_argument('--save_iter', '-s', type=int, default=10)
     parser.add_argument('--vis_iter', '-v', type=int, default=10)
     parser.add_argument('--log_dir', '-l', type=str, default=None)
@@ -110,7 +111,8 @@ def main():
                    vis_iter=args.vis_iter,
                    optimization_args=optimization_args,
                    log_dir=args.log_dir,
-                   args_to_log=args)
+                   args_to_log=args,
+                   stopping_param=args.stopping_param)
 
     # if training finishes successfully, compute the test score
     print("Testing the best validation model...")
