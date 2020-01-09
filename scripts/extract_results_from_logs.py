@@ -18,10 +18,18 @@ def main():
         if instance == '.gitkeep':
             continue
 
-        with open(os.path.join(args.log_dir, instance, 'args.pkl'), 'rb') as f:
+        args_file = os.path.join(args.log_dir, instance, 'args.pkl')
+        if not os.path.exists(args_file):
+            print("===> args.pkl is missing: {}".format(instance))
+            continue
+        with open(args_file, 'rb') as f:
             result = vars(pickle.load(f))
 
-        with open(os.path.join(args.log_dir, instance, 'test_accuracy.txt'), 'r') as f:
+        test_file = os.path.join(args.log_dir, instance, 'test_accuracy.txt')
+        if not os.path.exists(test_file):
+            print("===> test_accuracy.txt is missing: {}".format(instance))
+            continue
+        with open(test_file, 'r') as f:
             test_acc = float(f.read())
             result['test_accuracy'] = test_acc
 
