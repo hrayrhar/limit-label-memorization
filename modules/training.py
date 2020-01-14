@@ -86,6 +86,13 @@ def run_partition(model, epoch, tensorboard, optimizer, loader, partition, train
     return losses
 
 
+def make_markdown_table_from_dict(params_dict):
+    table = "| param | value |  \n|:----|:-----|  \n"
+    for k, v in params_dict.items():
+        table += "| {} | {} |  \n".format(k, v)
+    return table
+
+
 def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
           optimization_args=None, log_dir=None, args_to_log=None, stopping_param=50):
     """ Trains the model. Validation loader can be none.
@@ -105,6 +112,7 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
 
     # add args_to_log to tensorboard, but also store it separately for easier access
     tensorboard.add_text('script arguments', repr(args_to_log))
+    tensorboard.add_text('script arguments table', make_markdown_table_from_dict(vars(args_to_log)))
     with open(os.path.join(log_dir, 'args.pkl'), 'wb') as f:
         pickle.dump(args_to_log, f)
 
