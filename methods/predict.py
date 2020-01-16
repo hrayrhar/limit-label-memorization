@@ -1,4 +1,4 @@
-from modules import nn_utils, losses, pretrained_models
+from modules import nn_utils, losses, utils, pretrained_models
 from modules import visualization as vis
 import numpy as np
 import torch
@@ -39,7 +39,7 @@ class PredictGradOutput(PredictGradBaseClassifier):
     """
     def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
                  grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, sample_from_q=False,
-                 q_dist='Gaussian', loss_function='ce', detach=True, **kwargs):
+                 q_dist='Gaussian', loss_function='ce', detach=True, load_from=None, **kwargs):
         super(PredictGradOutput, self).__init__(**kwargs)
 
         self.args = {
@@ -54,6 +54,7 @@ class PredictGradOutput(PredictGradBaseClassifier):
             'q_dist': q_dist,
             'loss_function': loss_function,
             'detach': detach,
+            'load_from': load_from,
             'class': 'PredictGradOutput'
         }
 
@@ -69,6 +70,7 @@ class PredictGradOutput(PredictGradBaseClassifier):
         self.q_dist = q_dist
         self.detach = detach
         self.loss_function = loss_function
+        self.load_from = load_from
 
         # lamb is the coefficient in front of the H(p,q) term. It controls the variance of predicted gradients.
         if self.q_dist == 'Gaussian':
@@ -103,6 +105,13 @@ class PredictGradOutput(PredictGradBaseClassifier):
             self.q_network, _ = nn_utils.parse_feed_forward(args=self.architecture_args['q-network'],
                                                             input_shape=self.input_shape)
             self.q_network = self.q_network.to(self.device)
+
+            if self.load_from is not None:
+                print("Loading the gradient predictor model from {}".format(load_from))
+                stored_net = utils.load(load_from, device='cpu')
+                stored_net_params = dict(stored_net.classifier.named_parameters())
+                for key, param in self.q_network.named_parameters():
+                    param.data = stored_net_params[key].data.to(self.device)
 
         self.q_loss = None
         if self.loss_function == 'none':  # predicted gradient has general form
