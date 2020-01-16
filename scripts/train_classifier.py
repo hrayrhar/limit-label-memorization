@@ -56,6 +56,7 @@ def main():
     parser.add_argument('--noise_type', type=str, default='Gaussian', choices=['Gaussian', 'Laplace'])
     parser.add_argument('--noise_std', type=float, default=0.0)
 
+    parser.add_argument('--lr', type=float, default=1e-3, help='Learning rate')
     args = parser.parse_args()
     print(args)
 
@@ -66,7 +67,7 @@ def main():
     optimization_args = {
         'optimizer': {
             'name': 'adam',
-            'lr': 1e-3
+            'lr': args.lr
         }
     }
 
