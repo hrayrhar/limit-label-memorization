@@ -39,7 +39,7 @@ def dmi(target, pred):
     # mat = torch.mm(target.T, pred) / target.shape[0]  # normalizing makes the determinant too small
     mat = torch.mm(target.T, pred)
     # return -torch.log(torch.abs(torch.det(mat)) + 0.001)
-    return -torch.log(torch.abs(torch.det(mat)))
+    return -torch.log(torch.abs(torch.det(mat)) + 0.001)
 
 
 def fw(target, pred, T_est):
