@@ -162,10 +162,16 @@ def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
     return train_loader, val_loader, test_loader
 
 
-def load_cifar10_datasets(val_ratio=0.2, noise_level=0.0, data_augmentation=False,
+def load_cifar_datasets(val_ratio=0.2, noise_level=0.0, data_augmentation=False,
                           confusion_function=uniform_flip_confusion_matrix,
-                          num_train_examples=None, clean_validation=False, seed=42):
-    data_dir = os.path.join(os.path.dirname(__file__), '../data/cifar10/')
+                          num_train_examples=None, clean_validation=False,
+                          n_classes=10, seed=42):
+    if n_classes == 10:
+        data_dir = os.path.join(os.path.dirname(__file__), '../data/cifar10/')
+    elif n_classes == 100:
+        data_dir = os.path.join(os.path.dirname(__file__), '../data/cifar100/')
+    else:
+        raise ValueError("Variable n_classes should be 10 or 100.")
 
     data_augmentation_transforms = []
     if data_augmentation:
@@ -181,9 +187,14 @@ def load_cifar10_datasets(val_ratio=0.2, noise_level=0.0, data_augmentation=Fals
     train_transform = transforms.Compose(data_augmentation_transforms + common_transforms)
     val_transform = transforms.Compose(common_transforms)
 
-    train_data = datasets.CIFAR10(data_dir, download=True, train=True, transform=train_transform)
-    val_data = datasets.CIFAR10(data_dir, download=True, train=True, transform=val_transform)
-    test_data = datasets.CIFAR10(data_dir, download=True, train=False, transform=val_transform)
+    if n_classes == 10:
+        dataset_class = datasets.CIFAR10
+    else:
+        dataset_class = datasets.CIFAR100
+
+    train_data = dataset_class(data_dir, download=True, train=True, transform=train_transform)
+    val_data = dataset_class(data_dir, download=True, train=True, transform=val_transform)
+    test_data = dataset_class(data_dir, download=True, train=False, transform=val_transform)
 
     # split train and validation
     train_indices, val_indices = split(len(train_data), val_ratio, seed)
@@ -194,27 +205,28 @@ def load_cifar10_datasets(val_ratio=0.2, noise_level=0.0, data_augmentation=Fals
 
     # name datasets and save statistics
     for dataset in [train_data, val_data, test_data]:
-        dataset.dataset_name = 'cifar10'
+        dataset.dataset_name = ('cifar10' if n_classes == 10 else 'cifar100')
         dataset.statistics = (means, stds)
 
     # corrupt the labels if needed
-    is_corrupted = corrupt_labels(train_data, train_indices, noise_level, confusion_function, n_classes=10)
+    is_corrupted = corrupt_labels(train_data, train_indices, noise_level, confusion_function, n_classes=n_classes)
     if not clean_validation:
-        _ = corrupt_labels(val_data, val_indices, noise_level, confusion_function, n_classes=10)
+        _ = corrupt_labels(val_data, val_indices, noise_level, confusion_function, n_classes=n_classes)
 
     return train_data, val_data, test_data, is_corrupted
 
 
-def load_cifar10_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
-                         drop_last=False, num_train_examples=None, data_augmentation=False,
-                         confusion_function=uniform_flip_confusion_matrix, clean_validation=False):
-    train_data, val_data, test_data, _ = load_cifar10_datasets(val_ratio=val_ratio,
-                                                               noise_level=noise_level,
-                                                               data_augmentation=data_augmentation,
-                                                               confusion_function=confusion_function,
-                                                               num_train_examples=num_train_examples,
-                                                               clean_validation=clean_validation,
-                                                               seed=seed)
+def load_cifar_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42, drop_last=False,
+                       num_train_examples=None, data_augmentation=False, clean_validation=False,
+                       confusion_function=uniform_flip_confusion_matrix,  n_classes=10):
+    train_data, val_data, test_data, _ = load_cifar_datasets(val_ratio=val_ratio,
+                                                             noise_level=noise_level,
+                                                             data_augmentation=data_augmentation,
+                                                             confusion_function=confusion_function,
+                                                             num_train_examples=num_train_examples,
+                                                             clean_validation=clean_validation,
+                                                             n_classes=n_classes,
+                                                             seed=seed)
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True,
                               num_workers=4, drop_last=drop_last)
@@ -318,11 +330,14 @@ def load_data_from_arguments(args):
     if args.transform_function == 'remove_random_chunks':
         transform_function = create_remove_random_chunks_function(args.remove_prob)
 
-    confusion_function = uniform_flip_confusion_matrix
-    if args.label_noise_type == 'error':
+    if args.label_noise_type == 'flip':
+        confusion_function = uniform_flip_confusion_matrix
+    elif args.label_noise_type == 'error':
         confusion_function = uniform_error_confusion_matrix
-    if args.label_noise_type == 'cifar10_custom':
+    elif args.label_noise_type == 'cifar10_custom':
         confusion_function = cifar10_custom_confusion_matrix
+    else:
+        raise ValueError()
 
     if args.dataset == 'mnist':
         train_loader, val_loader, test_loader = load_mnist_loaders(
@@ -334,12 +349,23 @@ def load_data_from_arguments(args):
             seed=args.seed)
 
     if args.dataset == 'cifar10':
-        train_loader, val_loader, test_loader = load_cifar10_loaders(
+        train_loader, val_loader, test_loader = load_cifar_loaders(
             batch_size=args.batch_size, noise_level=args.label_noise_level,
             num_train_examples=args.num_train_examples,
             data_augmentation=args.data_augmentation,
             confusion_function=confusion_function,
             clean_validation=args.clean_validation,
+            n_classes=10,
+            seed=args.seed)
+
+    if args.dataset == 'cifar100':
+        train_loader, val_loader, test_loader = load_cifar_loaders(
+            batch_size=args.batch_size, noise_level=args.label_noise_level,
+            num_train_examples=args.num_train_examples,
+            data_augmentation=args.data_augmentation,
+            confusion_function=confusion_function,
+            clean_validation=args.clean_validation,
+            n_classes=100,
             seed=args.seed)
 
     if args.dataset == 'clothing1M':

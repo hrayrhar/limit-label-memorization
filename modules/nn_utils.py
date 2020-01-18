@@ -59,10 +59,17 @@ class Identity(nn.Module):
 def parse_feed_forward(args, input_shape):
     """Parses a sequential feed-forward neural network from json config."""
 
+    # parse known networks
     if isinstance(args, dict):
         if args['net'] == 'resnet-cifar10':
-            from modules.resnet_cifar10 import ResNet34
-            net = ResNet34()
+            from modules.resnet_cifar import ResNet34
+            net = ResNet34(num_classes=10)
+            output_shape = infer_shape([net], input_shape)
+            print("output.shape:", output_shape)
+            return net, output_shape
+        if args['net'] == 'resnet-cifar100':
+            from modules.resnet_cifar import ResNet34
+            net = ResNet34(num_classes=100)
             output_shape = infer_shape([net], input_shape)
             print("output.shape:", output_shape)
             return net, output_shape

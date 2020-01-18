@@ -1,0 +1,8 @@
+{
+  "classifier": {
+    "net": "resnet-cifar100"
+  },
+  "q-network": {
+    "net": "resnet-cifar100"
+  }
+}
