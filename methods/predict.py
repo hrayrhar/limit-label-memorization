@@ -39,7 +39,8 @@ class PredictGradOutput(PredictGradBaseClassifier):
     """
     def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
                  grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, sample_from_q=False,
-                 q_dist='Gaussian', loss_function='ce', detach=True, load_from=None, **kwargs):
+                 q_dist='Gaussian', loss_function='ce', detach=True, load_from=None,
+                 warm_up=0, **kwargs):
         super(PredictGradOutput, self).__init__(**kwargs)
 
         self.args = {
@@ -55,6 +56,7 @@ class PredictGradOutput(PredictGradBaseClassifier):
             'loss_function': loss_function,
             'detach': detach,
             'load_from': load_from,
+            'warm_up': warm_up,
             'class': 'PredictGradOutput'
         }
 
@@ -71,6 +73,7 @@ class PredictGradOutput(PredictGradBaseClassifier):
         self.detach = detach
         self.loss_function = loss_function
         self.load_from = load_from
+        self.warm_up = warm_up
 
         # lamb is the coefficient in front of the H(p,q) term. It controls the variance of predicted gradients.
         if self.q_dist == 'Gaussian':
@@ -214,6 +217,13 @@ class PredictGradOutput(PredictGradBaseClassifier):
             batch_losses['pred_grad_l1'] = grad_l1_loss
 
         return batch_losses, info
+
+    def on_epoch_start(self, partition, epoch, **kwargs):
+        super(PredictGradOutput, self).on_epoch_start(partition=partition, epoch=epoch, **kwargs)
+        if partition == 'train':
+            requires_grad = (epoch >= self.warm_up)
+            for param in self.classifier.parameters():
+                param.requires_grad = requires_grad
 
     def visualize(self, train_loader, val_loader, tensorboard=None, epoch=None, **kwargs):
         visualizations = super(PredictGradOutput, self).visualize(train_loader, val_loader,

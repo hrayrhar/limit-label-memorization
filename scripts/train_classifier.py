@@ -49,6 +49,8 @@ def main():
     parser.add_argument('--q_dist', type=str, default='Gaussian', choices=['Gaussian', 'Laplace', 'dot'])
     parser.add_argument('--no-detach', dest='detach', action='store_false')
     parser.set_defaults(detach=True)
+    parser.add_argument('--warm_up', type=int, default=0, help='Number of epochs to skip before '
+                        'starting to train using predicted gradients')
 
     parser.add_argument('--add_noise', action='store_true', dest='add_noise',
                         help='add noise to the gradients of a standard classifier.')
@@ -102,7 +104,8 @@ def main():
                         add_noise=args.add_noise,
                         noise_type=args.noise_type,
                         noise_std=args.noise_std,
-                        detach=args.detach)
+                        detach=args.detach,
+                        warm_up=args.warm_up)
 
     training.train(model=model,
                    train_loader=train_loader,
