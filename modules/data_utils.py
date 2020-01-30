@@ -314,11 +314,11 @@ def load_clothing1M_loaders(batch_size=128, drop_last=False, num_train_examples=
         train_data = Subset(train_data, subset)
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True,
-                              num_workers=32, drop_last=drop_last)
+                              num_workers=10, drop_last=drop_last)
     val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False,
-                            num_workers=32, drop_last=drop_last)
+                            num_workers=10, drop_last=drop_last)
     test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False,
-                             num_workers=32, drop_last=drop_last)
+                             num_workers=10, drop_last=drop_last)
 
     return train_loader, val_loader, test_loader
 

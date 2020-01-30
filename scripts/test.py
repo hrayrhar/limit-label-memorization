@@ -31,7 +31,7 @@ def main():
     print(args)
 
     # Load data
-    train_loader, val_loader, test_loader = datasets.load_data_from_arguments(args)
+    _, _, test_loader = datasets.load_data_from_arguments(args)
 
     print(f"Testing the model saved at {args.load_from}")
     model = utils.load(args.load_from, device=args.device)
