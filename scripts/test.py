@@ -2,6 +2,8 @@ from modules import utils
 import modules.data_utils as datasets
 import argparse
 import torch
+import os
+import pickle
 
 
 def main():
@@ -26,6 +28,7 @@ def main():
     parser.add_argument('--remove_prob', type=float, default=0.5)
 
     parser.add_argument('--load_from', type=str, default=None, required=True)
+    parser.add_argument('--output_dir', '-o', type=str, default=None)
 
     args = parser.parse_args()
     print(args)
@@ -40,13 +43,15 @@ def main():
     labels = [p[1] for p in test_loader.dataset]
     labels = torch.tensor(labels, dtype=torch.long)
     labels = utils.to_cpu(labels)
-    # with open(os.path.join(args.log_dir, 'test_predictions.pkl'), 'wb') as f:
-    #     pickle.dump({'pred': pred, 'labels': labels}, f)
+    if args.output_dir is not None:
+        with open(os.path.join(args.output_dir, 'test_predictions.pkl'), 'wb') as f:
+            pickle.dump({'pred': pred, 'labels': labels}, f)
 
     accuracy = torch.mean((pred.argmax(dim=1) == labels).float())
     print(accuracy)
-    # with open(os.path.join(args.log_dir, 'test_accuracy.txt'), 'w') as f:
-    #     f.write("{}\n".format(accuracy))
+    if args.output_dir is not None:
+        with open(os.path.join(args.output_dir, 'test_accuracy.txt'), 'w') as f:
+            f.write("{}\n".format(accuracy))
 
 
 if __name__ == '__main__':

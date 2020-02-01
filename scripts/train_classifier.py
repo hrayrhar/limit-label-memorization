@@ -51,6 +51,7 @@ def main():
     parser.set_defaults(detach=True)
     parser.add_argument('--warm_up', type=int, default=0, help='Number of epochs to skip before '
                         'starting to train using predicted gradients')
+    parser.add_argument('--weight_decay', type=float, default=0.0)
 
     parser.add_argument('--add_noise', action='store_true', dest='add_noise',
                         help='add noise to the gradients of a standard classifier.')
@@ -69,7 +70,8 @@ def main():
     optimization_args = {
         'optimizer': {
             'name': 'adam',
-            'lr': args.lr
+            'lr': args.lr,
+            'weight_decay': args.weight_decay
         }
     }
 

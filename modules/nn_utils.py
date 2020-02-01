@@ -99,6 +99,8 @@ def parse_feed_forward(args, input_shape):
             if cur_layer.get('batch_norm', False):
                 net.append(nn.BatchNorm1d(dim))
             add_activation(net, cur_layer.get('activation', 'linear'))
+            if 'dropout' in cur_layer:
+                net.append(nn.Dropout(cur_layer['dropout']))
 
         if layer_type == 'flatten':
             net.append(Flatten())
