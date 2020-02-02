@@ -38,11 +38,10 @@ def main():
 
     print(f"Testing the model saved at {args.load_from}")
     model = utils.load(args.load_from, device=args.device)
-    pred = utils.apply_on_dataset(model, test_loader.dataset, batch_size=args.batch_size,
-                                  output_keys_regexp='pred', description='Testing')['pred']
-    labels = [p[1] for p in test_loader.dataset]
-    labels = torch.tensor(labels, dtype=torch.long)
-    labels = utils.to_cpu(labels)
+    ret = utils.apply_on_dataset(model, test_loader.dataset, batch_size=args.batch_size,
+                                 output_keys_regexp='pred|label', description='Testing')
+    pred = ret['pred']
+    labels = ret['label']
     if args.output_dir is not None:
         with open(os.path.join(args.output_dir, 'test_predictions.pkl'), 'wb') as f:
             pickle.dump({'pred': pred, 'labels': labels}, f)
