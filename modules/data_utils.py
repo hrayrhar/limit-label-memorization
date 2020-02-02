@@ -7,6 +7,7 @@ import os
 # for fixing RuntimeError: received 0 items of ancdata
 import torch.multiprocessing
 torch.multiprocessing.set_sharing_strategy('file_system')
+torch.multiprocessing.set_start_method('spawn')
 
 
 def split(n_samples, val_ratio, seed):
@@ -49,13 +50,13 @@ def cifar10_custom_confusion_matrix(n_classes, error_prob):
 
 
 def corrupt_labels(dataset, indices, noise_level, confusion_function, n_classes):
-    is_corrupted = np.zeros(len(dataset), dtype=int)  # 0 clean, 1 corrupted
+    is_corrupted = np.zeros(len(dataset), dtype=np.bool)  # 0 clean, 1 corrupted
     cf = confusion_function(n_classes=n_classes, error_prob=noise_level)
     for current_idx, sample_idx in enumerate(indices):
         label = dataset.dataset.targets[sample_idx]
         new_label = int(np.random.choice(n_classes, 1, p=np.array(cf[label])))
-        dataset.dataset.targets[sample_idx] = new_label
         is_corrupted[current_idx] = (label != new_label)
+        dataset.dataset.targets[sample_idx] = new_label
     return is_corrupted
 
 
