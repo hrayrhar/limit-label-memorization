@@ -99,6 +99,10 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
     Assumptions:
     1. loaders return (batch_inputs, batch_labels), where both can be lists or torch.Tensors
     """
+
+    # print the architecture of the model, helps to notice mistakes
+    print(model)
+
     # if log_dir is not given, logging will be done a new directory in 'logs/' directory
     if log_dir is None:
         log_root = 'logs/'

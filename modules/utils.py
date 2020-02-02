@@ -56,7 +56,7 @@ def save(model, path, optimizer=None, scheduler=None):
     torch.save(save_dict, path)
 
 
-def load(path, device=None):
+def load(path, device=None, verbose=False):
     print("Loading the model from {}".format(path))
     saved_dict = torch.load(path, map_location=device)
     args = saved_dict['args']
@@ -65,18 +65,24 @@ def load(path, device=None):
 
     model_class = getattr(methods, args['class'])
     model = model_class(**args)
+
+    if verbose:
+        print(model)
+
     model.load_state_dict(saved_dict['model'])
     model.eval()
     return model
 
 
 def apply_on_dataset(model, dataset, batch_size=256, cpu=True, description="",
-                     output_keys_regexp='.*', max_num_examples=2**30, **kwargs):
+                     output_keys_regexp='.*', max_num_examples=2**30,
+                     num_workers=1, **kwargs):
     model.eval()
 
     n_examples = min(len(dataset), max_num_examples)
     loader = DataLoader(dataset=Subset(dataset, range(n_examples)),
-                        batch_size=batch_size, shuffle=False)
+                        batch_size=batch_size, shuffle=False,
+                        num_workers=num_workers)
 
     outputs = defaultdict(list)
 
@@ -90,6 +96,10 @@ def apply_on_dataset(model, dataset, batch_size=256, cpu=True, description="",
             if cpu:
                 v = to_cpu(v)
             outputs[k].append(v)
+
+        # add labels if requested
+        if re.fullmatch(output_keys_regexp, 'label') is not None:
+            outputs['label'].append(labels_batch)
 
     for k in outputs:
         outputs[k] = torch.cat(outputs[k], dim=0)
