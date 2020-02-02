@@ -3,11 +3,7 @@ from torch.utils.data import Subset, DataLoader, Dataset
 from PIL import Image
 import numpy as np
 import os
-
-# for fixing RuntimeError: received 0 items of ancdata
-import torch.multiprocessing
-torch.multiprocessing.set_sharing_strategy('file_system')
-torch.multiprocessing.set_start_method('spawn')
+import torch
 
 
 def split(n_samples, val_ratio, seed):
@@ -309,6 +305,13 @@ def load_clothing1M_loaders(batch_size=128, drop_last=False, num_train_examples=
                             data_augmentation=False, seed=42):
     train_data, val_data, test_data, _ = load_clothing1M_datasets(data_augmentation=data_augmentation,
                                                                   seed=seed)
+
+    # for fixing RuntimeError: received 0 items of ancdata
+    try:
+        torch.multiprocessing.set_sharing_strategy('file_system')
+        torch.multiprocessing.set_start_method('spawn')
+    except:
+        pass
 
     if num_train_examples is not None:
         subset = np.random.choice(len(train_data), num_train_examples, replace=False)

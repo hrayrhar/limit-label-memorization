@@ -76,8 +76,14 @@ def load(path, device=None, verbose=False):
 
 def apply_on_dataset(model, dataset, batch_size=256, cpu=True, description="",
                      output_keys_regexp='.*', max_num_examples=2**30,
-                     num_workers=1, **kwargs):
+                     num_workers=0, **kwargs):
     model.eval()
+    if num_workers > 0:
+        try:
+            torch.multiprocessing.set_sharing_strategy('file_system')
+            torch.multiprocessing.set_start_method('spawn')
+        except:
+            pass
 
     n_examples = min(len(dataset), max_num_examples)
     loader = DataLoader(dataset=Subset(dataset, range(n_examples)),
