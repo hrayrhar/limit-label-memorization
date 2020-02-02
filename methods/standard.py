@@ -56,8 +56,6 @@ class StandardClassifier(BaseClassifier):
             for key, param in self.classifier.named_parameters():
                 param.data = stored_net_params[key].data.to(self.device)
 
-        print(self)
-
     def on_epoch_start(self, partition, epoch, loader, **kwargs):
         super(StandardClassifier, self).on_epoch_start(partition=partition, epoch=epoch,
                                                        loader=loader, **kwargs)
@@ -142,8 +140,6 @@ class StandardClassifierWithNoise(BaseClassifier):
                                                                     input_shape=self.repr_shape)
         self.num_classes = output_shape[-1]
         self.classifier = self.classifier.to(self.device)
-
-        print(self)
 
     def forward(self, inputs, grad_enabled=False, **kwargs):
         torch.set_grad_enabled(grad_enabled)

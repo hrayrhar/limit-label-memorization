@@ -58,8 +58,6 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
                                                             input_shape=self.input_shape)
             self.q_network = self.q_network.to(self.device)
 
-        print(self)
-
     def forward(self, inputs, grad_enabled=False, **kwargs):
         torch.set_grad_enabled(grad_enabled)
         x = inputs[0].to(self.device)

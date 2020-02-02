@@ -39,8 +39,6 @@ class VAE(torch.nn.Module):
 
         self.encoder = self.encoder.to(self.device)
 
-        print(self)
-
     def forward(self, inputs, sampling=False, detailed_output=False,
                 grad_enabled=False, **kwargs):
         torch.set_grad_enabled(grad_enabled)

@@ -123,8 +123,6 @@ class PredictGradOutput(PredictGradBaseClassifier):
                 torch.nn.ReLU(inplace=True),
                 torch.nn.Linear(128, self.num_classes)).to(self.device)
 
-        print(self)
-
     def forward(self, inputs, grad_enabled=False, **kwargs):
         torch.set_grad_enabled(grad_enabled)
         x = inputs[0].to(self.device)
@@ -306,8 +304,6 @@ class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
         #     Q_init[i, i] += 0.1
         # self.Q_logits = torch.nn.Parameter(Q_init, requires_grad=False)
 
-        print(self)
-
     def forward(self, inputs, grad_enabled=False, **kwargs):
         torch.set_grad_enabled(grad_enabled)
         x = inputs[0].to(self.device)
@@ -445,8 +441,6 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
             torch.nn.Linear(q_base_shape[-1] + 2 * self.num_classes, 128),
             torch.nn.ReLU(inplace=True),
             torch.nn.Linear(128, self.num_classes)).to(self.device)
-
-        print(self)
 
     def forward(self, inputs, grad_enabled=False, **kwargs):
         torch.set_grad_enabled(grad_enabled)
