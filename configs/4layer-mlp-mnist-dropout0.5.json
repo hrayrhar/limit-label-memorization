@@ -1,0 +1,18 @@
+{
+  "classifier": [
+    {"type": "flatten"},
+    {"type": "fc", "dim": 512, "activation": "relu", "batch_norm": true, "dropout": 0.5},
+    {"type": "fc", "dim": 512, "activation": "relu", "batch_norm": true, "dropout": 0.5},
+    {"type": "fc", "dim": 512, "activation": "relu", "batch_norm": true, "dropout": 0.5},
+    {"type": "fc", "dim": 512, "activation": "relu", "batch_norm": true, "dropout": 0.5},
+    {"type": "fc", "dim": 10}
+  ],
+  "q-network": [
+    {"type": "flatten"},
+    {"type": "fc", "dim": 512, "activation": "relu", "batch_norm": true, "dropout": 0.5},
+    {"type": "fc", "dim": 512, "activation": "relu", "batch_norm": true, "dropout": 0.5},
+    {"type": "fc", "dim": 512, "activation": "relu", "batch_norm": true, "dropout": 0.5},
+    {"type": "fc", "dim": 512, "activation": "relu", "batch_norm": true, "dropout": 0.5},
+    {"type": "fc", "dim": 10}
+  ]
+}
