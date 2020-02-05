@@ -79,11 +79,8 @@ def apply_on_dataset(model, dataset, batch_size=256, cpu=True, description="",
                      num_workers=0, **kwargs):
     model.eval()
     if num_workers > 0:
-        try:
-            torch.multiprocessing.set_sharing_strategy('file_system')
-            torch.multiprocessing.set_start_method('spawn')
-        except:
-            pass
+        torch.multiprocessing.set_sharing_strategy('file_system')
+        torch.multiprocessing.set_start_method('spawn', force=True)
 
     n_examples = min(len(dataset), max_num_examples)
     loader = DataLoader(dataset=Subset(dataset, range(n_examples)),

@@ -307,11 +307,8 @@ def load_clothing1M_loaders(batch_size=128, drop_last=False, num_train_examples=
                                                                   seed=seed)
 
     # for fixing RuntimeError: received 0 items of ancdata
-    try:
-        torch.multiprocessing.set_sharing_strategy('file_system')
-        torch.multiprocessing.set_start_method('spawn')
-    except:
-        pass
+    torch.multiprocessing.set_sharing_strategy('file_system')
+    torch.multiprocessing.set_start_method('spawn', force=True)
 
     if num_train_examples is not None:
         subset = np.random.choice(len(train_data), num_train_examples, replace=False)
