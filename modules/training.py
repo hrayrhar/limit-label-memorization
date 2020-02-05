@@ -10,8 +10,28 @@ import numpy as np
 import torch
 
 
-def build_optimizer(params, optimization_args):
+def add_weight_decay(named_params, weight_decay_rate):
+    decay = []
+    no_decay = []
+    for name, param in named_params:
+        if len(param.shape) == 1 or name.endswith(".bias"):  # BatchNorm1D or bias
+            no_decay.append(param)
+        else:
+            decay.append(param)
+    return [{'params': no_decay, 'weight_decay': 0.0},
+            {'params': decay, 'weight_decay': weight_decay_rate}]
+
+
+def build_optimizer(named_params, optimization_args):
     args = optimization_args['optimizer']
+
+    # add weight decay if needed
+    weight_decay_rate = args.pop('weight_decay', None)
+    if weight_decay_rate is not None:
+        params = add_weight_decay(named_params, weight_decay_rate)
+    else:
+        params = [param for name, param in named_params]
+
     optimizer = None
     name = args.pop('name', 'adam')
     if name == 'adam':
@@ -120,7 +140,7 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
     with open(os.path.join(log_dir, 'args.pkl'), 'wb') as f:
         pickle.dump(args_to_log, f)
 
-    optimizer = build_optimizer(model.parameters(), optimization_args)
+    optimizer = build_optimizer(model.named_parameters(), optimization_args)
     scheduler = build_scheduler(optimizer, optimization_args)
 
     last_best_epoch = 0  # this is used to shut down training if its performance is degraded
