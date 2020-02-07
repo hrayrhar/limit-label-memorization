@@ -1,4 +1,4 @@
-# Improving Generalization by Controlling Label-Noise Information in Neural Network Weights
+# Improving generalization by controlling label-noise information in neural network weights
 
 ## Structure of the repository
 | Directory | Purpose |
