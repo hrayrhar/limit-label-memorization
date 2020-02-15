@@ -15,13 +15,6 @@ def split(n_samples, val_ratio, seed):
     return train_indices, val_indices
 
 
-def uniform_flip_confusion_matrix(n_classes, error_prob):
-    cf = error_prob / n_classes * np.ones((n_classes, n_classes))
-    cf += (1.0 - error_prob) * np.eye(n_classes)
-    assert np.allclose(cf.sum(axis=1), 1)
-    return cf
-
-
 def uniform_error_confusion_matrix(n_classes, error_prob):
     cf = error_prob / (n_classes - 1) * np.ones((n_classes, n_classes))
     for i in range(n_classes):
@@ -93,7 +86,7 @@ def revert_normalization(samples, dataset):
 
 def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, transform_function=None,
                         num_train_examples=None, clean_validation=False,
-                        confusion_function=uniform_flip_confusion_matrix, seed=42):
+                        confusion_function=uniform_error_confusion_matrix, seed=42):
     data_dir = os.path.join(os.path.dirname(__file__), '../data/mnist/')
 
     # Add normalization. This is done so that models pretrained on ImageNet work well.
@@ -143,7 +136,7 @@ def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, transform_function=None,
 
 def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
                        drop_last=False, num_train_examples=None, transform_function=None,
-                       clean_validation=False, confusion_function=uniform_flip_confusion_matrix):
+                       clean_validation=False, confusion_function=uniform_error_confusion_matrix):
     train_data, val_data, test_data, _ = load_mnist_datasets(
         val_ratio=val_ratio, noise_level=noise_level, transform_function=transform_function,
         clean_validation=clean_validation, num_train_examples=num_train_examples,
@@ -160,7 +153,7 @@ def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
 
 
 def load_cifar_datasets(val_ratio=0.2, noise_level=0.0, data_augmentation=False,
-                          confusion_function=uniform_flip_confusion_matrix,
+                          confusion_function=uniform_error_confusion_matrix,
                           num_train_examples=None, clean_validation=False,
                           n_classes=10, seed=42):
     if n_classes == 10:
@@ -215,7 +208,7 @@ def load_cifar_datasets(val_ratio=0.2, noise_level=0.0, data_augmentation=False,
 
 def load_cifar_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42, drop_last=False,
                        num_train_examples=None, data_augmentation=False, clean_validation=False,
-                       confusion_function=uniform_flip_confusion_matrix,  n_classes=10):
+                       confusion_function=uniform_error_confusion_matrix,  n_classes=10):
     train_data, val_data, test_data, _ = load_cifar_datasets(val_ratio=val_ratio,
                                                              noise_level=noise_level,
                                                              data_augmentation=data_augmentation,
@@ -331,9 +324,7 @@ def load_data_from_arguments(args):
     if args.transform_function == 'remove_random_chunks':
         transform_function = create_remove_random_chunks_function(args.remove_prob)
 
-    if args.label_noise_type == 'flip':
-        confusion_function = uniform_flip_confusion_matrix
-    elif args.label_noise_type == 'error':
+    if args.label_noise_type == 'error':
         confusion_function = uniform_error_confusion_matrix
     elif args.label_noise_type == 'cifar10_custom':
         confusion_function = cifar10_custom_confusion_matrix

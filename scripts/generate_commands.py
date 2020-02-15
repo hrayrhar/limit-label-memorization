@@ -47,7 +47,7 @@ device = 'cuda'
 n_epochs = 400
 save_iter = 10000
 vis_iter = 50
-stopping_param = 50
+stopping_param = 100
 label_noise_type = "error"
 dataset = "mnist"
 

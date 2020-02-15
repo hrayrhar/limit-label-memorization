@@ -27,8 +27,8 @@ def main():
     parser.set_defaults(data_augmentation=False)
     parser.add_argument('--num_train_examples', type=int, default=None)
     parser.add_argument('--label_noise_level', '-n', type=float, default=0.0)
-    parser.add_argument('--label_noise_type', type=str, default='flip',
-                        choices=['flip', 'error', 'cifar10_custom'])
+    parser.add_argument('--label_noise_type', type=str, default='error',
+                        choices=['error', 'cifar10_custom'])
     parser.add_argument('--transform_function', type=str, default=None,
                         choices=[None, 'remove_random_chunks'])
     parser.add_argument('--clean_validation', dest='clean_validation', action='store_true')
