@@ -85,6 +85,12 @@ def parse_feed_forward(args, input_shape):
             output_shape = infer_shape([net], input_shape)
             print("output.shape:", output_shape)
             return net, output_shape
+        if args['net'] == 'double-descent-cifar10-resnet18':
+            from modules.resnet18_double_descent import make_resnet18k
+            net = make_resnet18k(k=args['k'], num_classes=10)
+            output_shape = infer_shape([net], input_shape)
+            print("output.shape:", output_shape)
+            return net, output_shape
 
     net = []
     for cur_layer in args:
