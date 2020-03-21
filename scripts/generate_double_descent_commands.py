@@ -24,7 +24,7 @@ def merge_commands(commands, gpu_cnt=10, max_job_cnt=10000, shuffle=True, put_de
 
 def check_exists(logdir):
     root_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.exists(os.path.join(root_dir, '../', logdir, 'test_accuracy.txt'))
+    return os.path.exists(os.path.join(root_dir, '../', logdir, 'final_test_accuracy.txt'))
 
 
 def process_command(command):
@@ -41,7 +41,7 @@ def process_command(command):
 ######################                            CIFAR10-error                                   ######################
 ########################################################################################################################
 ns = [0.2]
-ks = [4, 6, 8, 10, 12, 16, 20, 24, 28, 32]
+ks = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
 seeds = range(42, 43)
 device = 'cuda'
 n_epochs = 4000
@@ -60,9 +60,9 @@ for n in ns:
     for k in ks:
         for seed in seeds:
             command = f"python -um scripts.train_classifier_double_descent -c {arch_config} -d {device} -e {n_epochs} " \
-                f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} --label_noise_type {label_noise_type} -m {method} " \
+                f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A --label_noise_type {label_noise_type} -m {method} " \
                 f"--seed {seed} -k {k} " \
-                f"-l double_descent_logs/{dataset}-{label_noise_type}-noise{n}-{method}-k{k}-seed{seed}"
+                f"-l double_descent_logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-k{k}-seed{seed}"
             commands += process_command(command)
 
 merge_commands(commands, gpu_cnt=10, max_job_cnt=1)
