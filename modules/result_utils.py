@@ -3,9 +3,9 @@ import pickle
 
 
 method_columns = ['model_class', 'config', 'loss_function', 'q_dist', 'sample_from_q',
-                      'detach', 'add_noise', 'noise_type', 'warm_up', 'is_loaded', 'method_name']
+                  'detach', 'add_noise', 'noise_type', 'warm_up', 'is_loaded', 'method_name']
 hparam_columns = ['grad_l1_penalty', 'grad_weight_decay',
-                  'lamb', 'loss_function_param', 'noise_std', 'lr']
+                  'lamb', 'loss_function_param', 'noise_std', 'lr', 'weight_decay']
 data_columns = ['dataset', 'label_noise_level', 'label_noise_type', 'num_train_examples',
                 'remove_prob', 'transform_function', 'data_augmentation']
 ignore_columns = ['device', 'batch_size', 'epochs', 'stopping_param', 'save_iter', 'vis_iter',
@@ -47,10 +47,17 @@ def load_result_tables(list_of_datasets):
     df['is_loaded'] = (df.load_from != 'N/A')
     df['pretrained_arg'].fillna('N/A', inplace=True)
     df['lr'].fillna('1e-3', inplace=True)
+
     if 'warm_up' in df.columns:
         df['warm_up'].fillna(0, inplace=True)
     else:
         df['warm_up'] = 0
+
+    if 'weight_decay' is df.columns:
+        df['weight_decay'].fillna(0.0, inplace=True)
+    else:
+        df['weight_decay'] = 0.0
+
     df['method_name'] = 'unknown'
     return df
 
@@ -83,7 +90,7 @@ def infer_method_name(row):
         return ret
     if row.model_class == 'PenalizeLastLayerFixedForm':
         return 'Penalize'
-    return 'a'
+    return 'unknown'
 
 
 def fill_short_names(df):
