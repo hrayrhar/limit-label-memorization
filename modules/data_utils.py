@@ -85,7 +85,7 @@ def revert_normalization(samples, dataset):
 
 
 def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, transform_function=None,
-                        num_train_examples=None, clean_validation=False,
+                        num_train_examples=None, clean_validation=False, data_augmentation=False,
                         confusion_function=uniform_error_confusion_matrix, seed=42):
     data_dir = os.path.join(os.path.dirname(__file__), '../data/mnist/')
 
@@ -94,10 +94,16 @@ def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, transform_function=None,
     stds = torch.tensor([0.224])
     normalize_transform = transforms.Normalize(mean=means, std=stds)
 
-    composed_transform = transforms.Compose([transforms.ToTensor(), normalize_transform])
+    if data_augmentation:
+        data_augmentation_transforms = [transforms.RandomCrop(28, 4)]
+    else:
+        data_augmentation_transforms = []
 
-    train_val_data = datasets.MNIST(data_dir, download=True, train=True, transform=composed_transform)
-    test_data = datasets.MNIST(data_dir, download=True, train=False, transform=composed_transform)
+    train_transform = transforms.Compose(data_augmentation_transforms + [transforms.ToTensor(), normalize_transform])
+    test_transform = transforms.Compose([transforms.ToTensor(), normalize_transform])
+
+    train_val_data = datasets.MNIST(data_dir, download=True, train=True, transform=train_transform)
+    test_data = datasets.MNIST(data_dir, download=True, train=False, transform=test_transform)
 
     # split train and validation
     train_indices, val_indices = split(len(train_val_data), val_ratio, seed)
@@ -134,13 +140,13 @@ def load_mnist_datasets(val_ratio=0.2, noise_level=0.0, transform_function=None,
     return train_data, val_data, test_data, is_corrupted
 
 
-def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
+def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42, data_augmentation=False,
                        drop_last=False, num_train_examples=None, transform_function=None,
                        clean_validation=False, confusion_function=uniform_error_confusion_matrix):
     train_data, val_data, test_data, _ = load_mnist_datasets(
         val_ratio=val_ratio, noise_level=noise_level, transform_function=transform_function,
         clean_validation=clean_validation, num_train_examples=num_train_examples,
-        confusion_function=confusion_function, seed=seed)
+        data_augmentation=data_augmentation, confusion_function=confusion_function, seed=seed)
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True,
                               num_workers=4, drop_last=drop_last)
@@ -153,9 +159,9 @@ def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42,
 
 
 def load_cifar_datasets(val_ratio=0.2, noise_level=0.0, data_augmentation=False,
-                          confusion_function=uniform_error_confusion_matrix,
-                          num_train_examples=None, clean_validation=False,
-                          n_classes=10, seed=42):
+                        confusion_function=uniform_error_confusion_matrix,
+                        num_train_examples=None, clean_validation=False,
+                        n_classes=10, seed=42):
     if n_classes == 10:
         data_dir = os.path.join(os.path.dirname(__file__), '../data/cifar10/')
     elif n_classes == 100:
@@ -338,6 +344,7 @@ def load_data_from_arguments(args):
             clean_validation=args.clean_validation,
             confusion_function=confusion_function,
             num_train_examples=args.num_train_examples,
+            data_augmentation=args.data_augmentation,
             seed=args.seed)
 
     if args.dataset == 'cifar10':
