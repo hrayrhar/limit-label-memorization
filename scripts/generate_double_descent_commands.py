@@ -65,39 +65,24 @@ for n in ns:
                 f"-l double_descent_logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-k{k}-seed{seed}"
             commands += process_command(command)
 
-merge_commands(commands, gpu_cnt=10, max_job_cnt=1)
+# merge_commands(commands, gpu_cnt=10, max_job_cnt=1)
 
 
 """ PredictGradOutput """
-# method = "PredictGradOutput"
-# stopping_param = 200
-# Ls = [0.0, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0]
-# q_dists = ['Gaussian', 'Laplace']
-#
-# # commands = []
-# for n in ns:
-#     for L in Ls:
-#         for q_dist in q_dists:
-#             for seed in seeds:
-#                 command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} --label_noise_type {label_noise_type} -m {method} --q_dist {q_dist} -L {L} --seed {seed} -l logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-{q_dist}-L{L}-seed{seed}"
-#                 commands += process_command(command)
-#
-# merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
+method = "PredictGradOutput"
+Ls = [1.0]
+q_dists = ['Laplace']
 
-
-""" PredictGradOutput [loaded] """
-# method = "PredictGradOutput"
-# stopping_param = 200
-# Ls = [0.0, 0.1, 0.3, 1.0, 3.0, 10.0, 30.0]
-# q_dists = ['Gaussian', 'Laplace']
-#
 # commands = []
-# for n in ns:
-#     for L in Ls:
-#         for q_dist in q_dists:
-#             for seed in seeds:
-#                 load_from = f"logs/{dataset}-{label_noise_type}-noise{n}-augment-StandardClassifier-seed{seed}/checkpoints/best_val.mdl"
-#                 command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} --label_noise_type {label_noise_type} -m {method} --q_dist {q_dist} -L {L} --load_from {load_from} --seed {seed} -l logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-{q_dist}-L{L}-loaded-seed{seed}"
-#                 commands += process_command(command)
-#
-# merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
+for n in ns:
+    for k in ks:
+            for L in Ls:
+                for q_dist in q_dists:
+                    for seed in seeds:
+                        command = f"python -um scripts.train_classifier_double_descent -c {arch_config} -d {device} -e {n_epochs} " \
+                            f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A --label_noise_type {label_noise_type} -m {method} " \
+                            f"--seed {seed} -k {k} --q_dist {q_dist} -L {L} " \
+                            f"-l double_descent_logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-{q_dist}-L{L}-k{k}-seed{seed}"
+                        commands += process_command(command)
+
+merge_commands(commands, gpu_cnt=10, max_job_cnt=1)
