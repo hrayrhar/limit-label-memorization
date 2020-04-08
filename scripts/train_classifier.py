@@ -22,7 +22,7 @@ def main():
     parser.add_argument('--seed', type=int, default=42)
 
     parser.add_argument('--dataset', '-D', type=str, default='mnist',
-                        choices=['mnist', 'cifar10', 'cifar100', 'clothing1M'])
+                        choices=['mnist', 'cifar10', 'cifar100', 'clothing1m', 'imagenet'])
     parser.add_argument('--data_augmentation', '-A', action='store_true', dest='data_augmentation')
     parser.set_defaults(data_augmentation=False)
     parser.add_argument('--num_train_examples', type=int, default=None)

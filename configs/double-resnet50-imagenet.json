@@ -1,0 +1,8 @@
+{
+  "classifier": {
+    "net": "resnet50-imagenet"
+  },
+  "q-network": {
+    "net": "resnet50-imagenet"
+  }
+}

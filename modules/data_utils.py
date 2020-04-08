@@ -270,7 +270,7 @@ class Clothing1M(Dataset):
 
 
 def load_clothing1M_datasets(data_augmentation=False, seed=42):
-    data_dir = os.path.join(os.path.dirname(__file__), '../data/clothing1M/')
+    data_dir = os.path.join(os.path.dirname(__file__), '../data/clothing1m/')
 
     data_augmentation_transforms = []
     if data_augmentation:
@@ -294,7 +294,7 @@ def load_clothing1M_datasets(data_augmentation=False, seed=42):
 
     # name datasets and save statistics
     for dataset in [train_data, val_data, test_data]:
-        dataset.dataset_name = 'clothing1M'
+        dataset.dataset_name = 'clothing1m'
         dataset.statistics = (means, stds)
 
     return train_data, val_data, test_data, None
@@ -320,6 +320,65 @@ def load_clothing1M_loaders(batch_size=128, drop_last=False, num_train_examples=
     test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False,
                              num_workers=10, drop_last=drop_last)
 
+    return train_loader, val_loader, test_loader
+
+
+def load_imagenet_datasets(val_ratio=0.2, data_augmentation=False, num_train_examples=None, seed=42):
+    data_dir = os.path.join(os.path.dirname(__file__), '../data/imagenet/')
+
+    # add normalization
+    means = torch.tensor([0.485, 0.456, 0.406])
+    stds = torch.tensor([0.229, 0.224, 0.225])
+    normalize_transform = transforms.Normalize(mean=means, std=stds)
+
+    train_transform = transforms.Compose([
+        transforms.RandomResizedCrop(224),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        normalize_transform,
+    ])
+
+    test_transform = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        normalize_transform,
+    ])
+
+    if not data_augmentation:
+        train_transform = test_transform
+
+    train_data = datasets.ImageNet(data_dir, download=False, split='train', transform=train_transform)
+    val_data = datasets.ImageNet(data_dir, download=False, split='train', transform=test_transform)
+    test_data = datasets.ImageNet(data_dir, download=False, split='val', transform=test_transform)
+
+    # split train and validation
+    train_indices, val_indices = split(len(train_data), val_ratio, seed)
+    if num_train_examples is not None:
+        train_indices = np.random.choice(train_indices, num_train_examples, replace=False)
+    train_data = Subset(train_data, train_indices)
+    val_data = Subset(val_data, val_indices)
+
+    # name datasets and save statistics
+    for dataset in [train_data, val_data, test_data]:
+        dataset.dataset_name = 'imagenet'
+        dataset.statistics = (means, stds)
+
+    return train_data, val_data, test_data, None
+
+
+def load_imagenet_loaders(val_ratio=0.2, batch_size=128, seed=42, drop_last=False,
+                          num_train_examples=None, data_augmentation=False):
+    train_data, val_data, test_data, info = load_imagenet_datasets(val_ratio=val_ratio,
+                                                                   data_augmentation=data_augmentation,
+                                                                   num_train_examples=num_train_examples,
+                                                                   seed=seed)
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True,
+                              num_workers=10, drop_last=drop_last)
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False,
+                            num_workers=10, drop_last=drop_last)
+    test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=False,
+                             num_workers=10, drop_last=drop_last)
     return train_loader, val_loader, test_loader
 
 
@@ -367,8 +426,15 @@ def load_data_from_arguments(args):
             n_classes=100,
             seed=args.seed)
 
-    if args.dataset == 'clothing1M':
+    if args.dataset == 'clothing1m':
         train_loader, val_loader, test_loader = load_clothing1M_loaders(
+            batch_size=args.batch_size,
+            num_train_examples=args.num_train_examples,
+            data_augmentation=args.data_augmentation,
+            seed=args.seed)
+
+    if args.dataset == 'imagenet':
+        train_loader, val_loader, test_loader = load_imagenet_loaders(
             batch_size=args.batch_size,
             num_train_examples=args.num_train_examples,
             data_augmentation=args.data_augmentation,

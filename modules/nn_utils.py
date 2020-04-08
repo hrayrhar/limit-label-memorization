@@ -91,6 +91,12 @@ def parse_feed_forward(args, input_shape):
             output_shape = infer_shape([net], input_shape)
             print("output.shape:", output_shape)
             return net, output_shape
+        if args['net'] == 'resnet34-imagenet':
+            from torchvision.models import resnet34
+            net = resnet34(num_classes=1000)
+            output_shape = infer_shape([net], input_shape)
+            print("output.shape:", output_shape)
+            return net, output_shape
 
     net = []
     for cur_layer in args:
