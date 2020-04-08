@@ -1,5 +1,5 @@
 import methods
-from modules import training, utils
+from modules import training, utils, metrics
 import modules.data_utils as datasets
 import argparse
 import pickle
@@ -109,6 +109,10 @@ def main():
                         detach=args.detach,
                         warm_up=args.warm_up)
 
+    metrics_list = []
+    if args.dataset == 'imagenet':
+        metrics_list.append(metrics.TopKAccuracy(k=5, output_key='pred'))
+
     training.train(model=model,
                    train_loader=train_loader,
                    val_loader=val_loader,
@@ -118,7 +122,8 @@ def main():
                    optimization_args=optimization_args,
                    log_dir=args.log_dir,
                    args_to_log=args,
-                   stopping_param=args.stopping_param)
+                   stopping_param=args.stopping_param,
+                   metrics=metrics_list)
 
     # if training finishes successfully, compute the test score
     print("Testing the best validation model...")

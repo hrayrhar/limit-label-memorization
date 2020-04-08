@@ -48,9 +48,11 @@ def build_scheduler(optimizer, optimization_args):
     return optim.lr_scheduler.StepLR(optimizer, step_size=step_size, gamma=gamma)
 
 
-def run_partition(model, epoch, tensorboard, optimizer, loader, partition, training):
+def run_partition(model, epoch, tensorboard, optimizer, loader, partition, training, metrics):
     if hasattr(model, 'on_epoch_start'):
         model.on_epoch_start(epoch=epoch, tensorboard=tensorboard, partition=partition, loader=loader)
+    for metric in metrics:
+        metric.on_epoch_start(epoch=epoch, partition=partition)
 
     losses = defaultdict(list)
     total_number_samples = 0
@@ -87,6 +89,8 @@ def run_partition(model, epoch, tensorboard, optimizer, loader, partition, train
         if hasattr(model, 'on_iteration_end'):
             model.on_iteration_end(info=info, batch_losses=batch_losses, batch_labels=batch_labels,
                                    partition=partition, tensorboard=tensorboard)
+        for metric in metrics:
+            metric.on_iteration_end(info=info, batch_labels=batch_labels, partition=partition)
 
         # collect all losses
         if len(batch_losses) > 1:
@@ -102,6 +106,8 @@ def run_partition(model, epoch, tensorboard, optimizer, loader, partition, train
     if hasattr(model, 'on_epoch_end'):
         model.on_epoch_end(epoch=epoch, tensorboard=tensorboard, partition=partition,
                            loader=loader)
+    for metric in metrics:
+        metric.on_epoch_end(epoch=epoch, tensorboard=tensorboard, partition=partition)
 
     return losses
 
@@ -114,7 +120,7 @@ def make_markdown_table_from_dict(params_dict):
 
 
 def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
-          optimization_args=None, log_dir=None, args_to_log=None, stopping_param=50):
+          optimization_args=None, log_dir=None, args_to_log=None, stopping_param=50, metrics=None):
     """ Trains the model. Validation loader can be none.
     Assumptions:
     1. loaders return (batch_inputs, batch_labels), where both can be lists or torch.Tensors
@@ -143,19 +149,24 @@ def train(model, train_loader, val_loader, epochs, save_iter=10, vis_iter=4,
     optimizer = build_optimizer(model.named_parameters(), optimization_args)
     scheduler = build_scheduler(optimizer, optimization_args)
 
+    # convert metrics to list
+    if metrics is None:
+        metrics = []
+    assert isinstance(metrics, (list, tuple))
+
     last_best_epoch = 0  # this is used to shut down training if its performance is degraded
     for epoch in range(epochs):
         t0 = time.time()
 
         model.train()
         train_losses = run_partition(model=model, epoch=epoch, tensorboard=tensorboard, optimizer=optimizer,
-                                     loader=train_loader, partition='train', training=True)
+                                     loader=train_loader, partition='train', training=True, metrics=metrics)
 
         val_losses = {}
         if val_loader is not None:
             model.eval()
             val_losses = run_partition(model=model, epoch=epoch, tensorboard=tensorboard, optimizer=optimizer,
-                                       loader=val_loader, partition='val', training=False)
+                                       loader=val_loader, partition='val', training=False, metrics=metrics)
 
         # log some statistics
         t = time.time()
