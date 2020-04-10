@@ -21,7 +21,6 @@ class VAE(torch.nn.Module):
         assert len(input_shape) == 3
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
-        self.device = device
         self.revert_normalization = revert_normalization
 
         # used later
@@ -32,12 +31,12 @@ class VAE(torch.nn.Module):
 
         self.decoder, _ = nn_utils.parse_feed_forward(args=self.architecture_args['decoder'],
                                                       input_shape=self.hidden_shape)
-        self.decoder = self.decoder.to(self.device)
+        self.decoder = self.decoder.to(device)
 
         self.encoder, _ = nn_utils.parse_feed_forward(args=self.architecture_args['encoder'],
                                                       input_shape=self.input_shape)
 
-        self.encoder = self.encoder.to(self.device)
+        self.encoder = self.encoder.to(device)
 
     def forward(self, inputs, sampling=False, detailed_output=False,
                 grad_enabled=False, **kwargs):
@@ -71,23 +70,20 @@ class VAE(torch.nn.Module):
 
         return out
 
-    def compute_loss(self, inputs, grad_enabled, **kwargs):
+    def compute_loss(self, outputs, grad_enabled, **kwargs):
         torch.set_grad_enabled(grad_enabled)
 
-        info = self.forward(inputs=inputs, sampling=True, detailed_output=True,
-                            grad_enabled=grad_enabled)
-
         eps = 1e-6
-        target = torch.clamp(self.revert_normalization(info['x']), eps, 1-eps)
-        recon_loss = losses.binary_cross_entropy(target=target, pred=info['x_rec'])
-        kl_loss = self.encoder.kl_divergence(info)
+        target = torch.clamp(self.revert_normalization(outputs['x']), eps, 1 - eps)
+        recon_loss = losses.binary_cross_entropy(target=target, pred=outputs['x_rec'])
+        kl_loss = self.encoder.kl_divergence(outputs)
 
         batch_losses = {
             'recon': recon_loss,
             'kl': kl_loss
         }
 
-        return batch_losses, info
+        return batch_losses, outputs
 
     def visualize(self, train_loader, val_loader, **kwargs):
         self._vis_iters += 1

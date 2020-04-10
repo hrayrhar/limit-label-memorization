@@ -27,7 +27,6 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
         self.pretrained_arg = pretrained_arg
-        self.device = device
         self.grad_weight_decay = grad_weight_decay
         self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
@@ -38,25 +37,25 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
 
         self.classifier_base, _ = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'][:-1],
                                                               input_shape=self.input_shape)
-        self.classifier_base = self.classifier_base.to(self.device)
+        self.classifier_base = self.classifier_base.to(device)
         self.classifier_last_layer = torch.nn.Linear(self.last_layer_dim,
                                                      self.num_classes,
-                                                     bias=False).to(self.device)
+                                                     bias=False).to(device)
 
         if self.pretrained_arg is not None:
-            q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
+            q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, device)
 
             # create the trainable part of the q_network
             q_top = torch.nn.Sequential(
                 torch.nn.Linear(q_base.output_shape[-1], 128),
                 torch.nn.ReLU(inplace=True),
-                torch.nn.Linear(128, self.num_classes)).to(self.device)
+                torch.nn.Linear(128, self.num_classes)).to(device)
 
             self.q_network = torch.nn.Sequential(q_base, q_top)
         else:
             self.q_network, _ = nn_utils.parse_feed_forward(args=self.architecture_args['q-network'],
                                                             input_shape=self.input_shape)
-            self.q_network = self.q_network.to(self.device)
+            self.q_network = self.q_network.to(device)
 
     def forward(self, inputs, grad_enabled=False, **kwargs):
         torch.set_grad_enabled(grad_enabled)
@@ -77,13 +76,12 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
 
         return out
 
-    def compute_loss(self, inputs, labels, grad_enabled, **kwargs):
+    def compute_loss(self, inputs, labels, outputs, grad_enabled, **kwargs):
         torch.set_grad_enabled(grad_enabled)
 
-        info = self.forward(inputs=inputs, grad_enabled=grad_enabled)
-        pred = info['pred']
-        z = info['z']
-        q_label_pred = info['q_label_pred']
+        pred = outputs['pred']
+        z = outputs['z']
+        q_label_pred = outputs['q_label_pred']
 
         y = labels[0].to(self.device)
         y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
@@ -112,12 +110,12 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         if self.grad_l1_penalty > 0:
             raise NotImplementedError("Implement L1 penalty in this case.")
 
-        return batch_losses, info
+        return batch_losses, outputs
 
-    def on_iteration_end(self, info, batch_labels, partition, tensorboard, **kwargs):
-        super(PenalizeLastLayerFixedForm, self).on_iteration_end(info=info, batch_labels=batch_labels,
+    def on_iteration_end(self, outputs, batch_labels, partition, tensorboard, **kwargs):
+        super(PenalizeLastLayerFixedForm, self).on_iteration_end(outputs=outputs, batch_labels=batch_labels,
                                                                  partition=partition, **kwargs)
         # track some additional statistics
         tensorboard.add_scalar('stats/{}_norm_z'.format(partition),
-                               torch.sum(info['z']**2, dim=1).mean(),
+                               torch.sum(outputs['z'] ** 2, dim=1).mean(),
                                self._current_iteration[partition])

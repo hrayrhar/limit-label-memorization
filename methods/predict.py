@@ -65,7 +65,6 @@ class PredictGradOutput(PredictGradBaseClassifier):
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
         self.pretrained_arg = pretrained_arg
-        self.device = device
         self.grad_weight_decay = grad_weight_decay
         self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
@@ -92,23 +91,23 @@ class PredictGradOutput(PredictGradBaseClassifier):
         # initialize the network
         self.classifier, output_shape = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
                                                                     input_shape=self.input_shape)
-        self.classifier = self.classifier.to(self.device)
+        self.classifier = self.classifier.to(device)
         self.num_classes = output_shape[-1]
 
         if self.pretrained_arg is not None:
-            q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
+            q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, device)
 
             # create the trainable part of the q_network
             q_top = torch.nn.Sequential(
                 torch.nn.Linear(q_base.output_shape[-1], 128),
                 torch.nn.ReLU(inplace=True),
-                torch.nn.Linear(128, self.num_classes)).to(self.device)
+                torch.nn.Linear(128, self.num_classes)).to(device)
 
             self.q_network = torch.nn.Sequential(q_base, q_top)
         else:
             self.q_network, _ = nn_utils.parse_feed_forward(args=self.architecture_args['q-network'],
                                                             input_shape=self.input_shape)
-            self.q_network = self.q_network.to(self.device)
+            self.q_network = self.q_network.to(device)
 
             if self.load_from is not None:
                 print("Loading the gradient predictor model from {}".format(load_from))
@@ -116,14 +115,14 @@ class PredictGradOutput(PredictGradBaseClassifier):
                 stored_net = utils.load(load_from, methods=methods, device='cpu')
                 stored_net_params = dict(stored_net.classifier.named_parameters())
                 for key, param in self.q_network.named_parameters():
-                    param.data = stored_net_params[key].data.to(self.device)
+                    param.data = stored_net_params[key].data.to(device)
 
         self.q_loss = None
         if self.loss_function == 'none':  # predicted gradient has general form
             self.q_loss = torch.nn.Sequential(
                 torch.nn.Linear(2 * self.num_classes, 128),
                 torch.nn.ReLU(inplace=True),
-                torch.nn.Linear(128, self.num_classes)).to(self.device)
+                torch.nn.Linear(128, self.num_classes)).to(device)
 
     def forward(self, inputs, grad_enabled=False, **kwargs):
         torch.set_grad_enabled(grad_enabled)
@@ -163,17 +162,16 @@ class PredictGradOutput(PredictGradBaseClassifier):
 
         return out
 
-    def compute_loss(self, inputs, labels, grad_enabled, **kwargs):
+    def compute_loss(self, inputs, labels, outputs, grad_enabled, **kwargs):
         torch.set_grad_enabled(grad_enabled)
 
-        info = self.forward(inputs=inputs, grad_enabled=grad_enabled)
-        pred_before = info['pred_before']
-        grad_pred = info['grad_pred']
+        pred_before = outputs['pred_before']
+        grad_pred = outputs['grad_pred']
         y = labels[0].to(self.device)
         y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
 
         # classification loss
-        classifier_loss = F.cross_entropy(input=info['pred'], target=y)
+        classifier_loss = F.cross_entropy(input=outputs['pred'], target=y)
 
         # compute grad actual
         if self.detach:
@@ -216,7 +214,7 @@ class PredictGradOutput(PredictGradBaseClassifier):
                            torch.mean(torch.sum(torch.abs(grad_pred), dim=1), dim=0)
             batch_losses['pred_grad_l1'] = grad_l1_loss
 
-        return batch_losses, info
+        return batch_losses, outputs
 
     def on_epoch_start(self, partition, epoch, **kwargs):
         super(PredictGradOutput, self).on_epoch_start(partition=partition, epoch=epoch, **kwargs)
@@ -265,7 +263,6 @@ class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
         self.pretrained_arg = pretrained_arg
-        self.device = device
         self.grad_weight_decay = grad_weight_decay
         self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
@@ -277,31 +274,31 @@ class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
         # initialize the network
         self.classifier, output_shape = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
                                                                     input_shape=self.input_shape)
-        self.classifier = self.classifier.to(self.device)
+        self.classifier = self.classifier.to(device)
         self.num_classes = output_shape[-1]
 
         if self.pretrained_arg is not None:
-            self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
+            self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, device)
             q_base_shape = self.q_base.output_shape
         else:
             self.q_base, q_base_shape = nn_utils.parse_feed_forward(args=self.architecture_args['q-base'],
                                                                     input_shape=self.input_shape)
-            self.q_base = self.q_base.to(self.device)
+            self.q_base = self.q_base.to(device)
 
         if small_qtop:
-            self.q_top = torch.nn.Linear(q_base_shape[-1], self.num_classes).to(self.device)
+            self.q_top = torch.nn.Linear(q_base_shape[-1], self.num_classes).to(device)
         else:
             self.q_top = torch.nn.Sequential(
                 torch.nn.Linear(q_base_shape[-1], 128),
                 torch.nn.ReLU(inplace=True),
-                torch.nn.Linear(128, self.num_classes)).to(self.device)
+                torch.nn.Linear(128, self.num_classes)).to(device)
 
         # the confusion matrix trainable logits, (true, observed)
-        Q_init = torch.zeros(size=(self.num_classes, self.num_classes), device=self.device, dtype=torch.float)
-        Q_init += 1.0 * torch.eye(self.num_classes, device=self.device, dtype=torch.float)  # TODO: tune the constant
+        Q_init = torch.zeros(size=(self.num_classes, self.num_classes), device=device, dtype=torch.float)
+        Q_init += 1.0 * torch.eye(self.num_classes, device=device, dtype=torch.float)  # TODO: tune the constant
         self.Q_logits = torch.nn.Parameter(Q_init, requires_grad=True)
 
-        # Q_init = 0.09 * torch.ones(size=(self.num_classes, self.num_classes), device=self.device, dtype=torch.float)
+        # Q_init = 0.09 * torch.ones(size=(self.num_classes, self.num_classes), device=device, dtype=torch.float)
         # for i in range(self.num_classes):
         #     Q_init[i, i] += 0.1
         # self.Q_logits = torch.nn.Parameter(Q_init, requires_grad=False)
@@ -332,14 +329,13 @@ class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
 
         return out
 
-    def compute_loss(self, inputs, labels, grad_enabled, **kwargs):
+    def compute_loss(self, inputs, labels, outputs, grad_enabled, **kwargs):
         torch.set_grad_enabled(grad_enabled)
 
-        info = self.forward(inputs=inputs, grad_enabled=grad_enabled)
-        pred = info['pred']
-        q_label_pred = info['q_label_pred']
-        grad_pred = info['grad_pred']
-        Q = info['Q']
+        pred = outputs['pred']
+        q_label_pred = outputs['q_label_pred']
+        grad_pred = outputs['grad_pred']
+        Q = outputs['Q']
         y = labels[0].to(self.device)
         y_one_hot = F.one_hot(y, num_classes=self.num_classes).float()
 
@@ -373,7 +369,7 @@ class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
                            torch.mean(torch.sum(torch.abs(grad_pred), dim=1), dim=0)
             batch_losses['pred_grad_l1'] = grad_l1_loss
 
-        return batch_losses, info
+        return batch_losses, outputs
 
     def visualize(self, train_loader, val_loader, tensorboard=None, epoch=None, **kwargs):
         visualizations = super(PredictGradOutputFixedFormWithConfusion, self).visualize(
@@ -418,7 +414,6 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
         self.pretrained_arg = pretrained_arg
-        self.device = device
         self.grad_weight_decay = grad_weight_decay
         self.grad_l1_penalty = grad_l1_penalty
         self.lamb = lamb
@@ -426,23 +421,23 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
         # initialize the network
         self.classifier, _ = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
                                                          input_shape=self.input_shape)
-        self.classifier = self.classifier.to(self.device)
+        self.classifier = self.classifier.to(device)
         self.num_classes = self.architecture_args['classifier'][-1]['dim']
 
         if self.pretrained_arg is not None:
-            self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, self.device)
+            self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, device)
             q_base_shape = self.q_base.output_shape
         else:
             self.q_base, q_base_shape = nn_utils.parse_feed_forward(args=self.architecture_args['q-base'],
                                                                     input_shape=self.input_shape)
-            self.q_base = self.q_base.to(self.device)
+            self.q_base = self.q_base.to(device)
 
         # NOTE: we want to use classifier parameters too
         # TODO: find a good parametrization
         self.q_top = torch.nn.Sequential(
             torch.nn.Linear(q_base_shape[-1] + 2 * self.num_classes, 128),
             torch.nn.ReLU(inplace=True),
-            torch.nn.Linear(128, self.num_classes)).to(self.device)
+            torch.nn.Linear(128, self.num_classes)).to(device)
 
     def forward(self, inputs, grad_enabled=False, **kwargs):
         torch.set_grad_enabled(grad_enabled)
@@ -457,11 +452,10 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
 
         return out
 
-    def compute_loss(self, inputs, labels, grad_enabled, **kwargs):
+    def compute_loss(self, inputs, labels, outputs, grad_enabled, **kwargs):
         torch.set_grad_enabled(grad_enabled)
 
-        info = self.forward(inputs=inputs, grad_enabled=grad_enabled)
-        pred_before = info['pred_before']
+        pred_before = outputs['pred_before']
 
         x = inputs[0].to(self.device)
         y = labels[0].to(self.device)
@@ -470,11 +464,11 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
         # predict the gradient wrt to logits
         rx = self.q_base(x)
         grad_pred = self.q_top(torch.cat([rx, pred_before, y_one_hot], dim=1))
-        info['grad_pred'] = grad_pred
+        outputs['grad_pred'] = grad_pred
 
         # change the gradients
         pred = nn_utils.GradReplacement.apply(pred_before, grad_pred)
-        info['pred'] = pred
+        outputs['pred'] = pred
 
         # classification loss
         classifier_loss = F.cross_entropy(input=pred, target=y)
@@ -499,4 +493,4 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
                            torch.mean(torch.sum(torch.abs(grad_pred), dim=1), dim=0)
             batch_losses['pred_grad_l1'] = grad_l1_loss
 
-        return batch_losses, info
+        return batch_losses, outputs
