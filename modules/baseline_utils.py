@@ -1,6 +1,7 @@
-from modules import utils
+from nnlib.nnlib import utils
 import torch
 import numpy as np
+import methods
 
 
 def estimate_transition(load_from, data_loader, device='cpu', batch_size=256):
@@ -8,7 +9,7 @@ def estimate_transition(load_from, data_loader, device='cpu', batch_size=256):
     Source: https://github.com/giorgiop/loss-correction/.
     """
     assert load_from is not None
-    model = utils.load(load_from, device=device)
+    model = utils.load(load_from, methods=methods, device=device)
     pred = utils.apply_on_dataset(model=model, dataset=data_loader.dataset,
                                   batch_size=batch_size, cpu=True, description="Estimating transition matrix",
                                   output_keys_regexp='pred')['pred']

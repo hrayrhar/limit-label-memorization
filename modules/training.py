@@ -1,7 +1,7 @@
 from collections import defaultdict
 from torch.utils.tensorboard import SummaryWriter
 from torch import optim
-from modules import utils
+from nnlib.nnlib import utils
 from tqdm import tqdm
 import os
 import pickle

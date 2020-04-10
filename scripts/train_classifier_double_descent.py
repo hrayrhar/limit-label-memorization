@@ -1,5 +1,6 @@
 import methods
-from modules import training, utils
+from nnlib.nnlib import utils
+from modules import training
 from nnlib.nnlib.data_utils.base import load_data_from_arguments
 import argparse
 import pickle
@@ -113,7 +114,7 @@ def main():
     for spec in models_to_test:
         print("Testing the {} model...".format(spec['name']))
         model = utils.load(os.path.join(args.log_dir, 'checkpoints', spec['file']),
-                           device=args.device)
+                           methods=methods, device=args.device)
         pred = utils.apply_on_dataset(model, test_loader.dataset, batch_size=args.batch_size,
                                       output_keys_regexp='pred', description='Testing')['pred']
         labels = [p[1] for p in test_loader.dataset]
