@@ -1,6 +1,5 @@
 import methods
-from nnlib.nnlib import utils
-from modules import training
+from nnlib.nnlib import utils, training, metrics, callbacks
 from nnlib.nnlib.data_utils.base import load_data_from_arguments
 import argparse
 import pickle
@@ -13,6 +12,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', '-c', type=str, required=True)
     parser.add_argument('--device', '-d', default='cuda')
+    parser.add_argument('--all_device_ids', nargs='+', type=str, default=None,
+                        help="If not None, this list specifies devices for multiple GPU training. "
+                             "The first device should match with the main device (args.device).")
 
     parser.add_argument('--batch_size', '-b', type=int, default=128)
     parser.add_argument('--epochs', '-e', type=int, default=4000)
@@ -89,6 +91,15 @@ def main():
                         load_from=args.load_from,
                         loss_function='ce')
 
+    metrics_list = [metrics.Accuracy(output_key='pred')]
+    if args.dataset == 'imagenet':
+        metrics_list.append(metrics.TopKAccuracy(k=5, output_key='pred'))
+
+    callbacks_list = [callbacks.SaveBestWithMetric(metric=metrics_list[0], partition='val', direction='max')]
+
+    stopper = callbacks.EarlyStoppingWithMetric(metric=metrics_list[0], stopping_param=args.stopping_param,
+                                                partition='val', direction='max')
+
     training.train(model=model,
                    train_loader=train_loader,
                    val_loader=val_loader,
@@ -98,13 +109,16 @@ def main():
                    optimization_args=optimization_args,
                    log_dir=args.log_dir,
                    args_to_log=args,
-                   stopping_param=args.stopping_param)
+                   stopper=stopper,
+                   metrics=metrics_list,
+                   callbacks=callbacks_list,
+                   device_ids=args.all_device_ids)
 
     # test the last model and best model
     models_to_test = [
         {
             'name': 'best',
-            'file': 'best_val.mdl'
+            'file': 'best_val_accuracy.mdl'
         },
         {
             'name': 'final',

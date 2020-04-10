@@ -1,5 +1,5 @@
 from methods.vae import VAE
-from modules import training
+from nnlib.nnlib import training
 from nnlib.nnlib.data_utils.base import load_data_from_arguments, revert_normalization
 import argparse
 import json
