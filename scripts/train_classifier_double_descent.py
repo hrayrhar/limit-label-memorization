@@ -1,6 +1,6 @@
 import methods
 from modules import training, utils
-import modules.data_utils as datasets
+from nnlib.nnlib.data_utils.base import load_data_from_arguments
 import argparse
 import pickle
 import torch
@@ -53,7 +53,7 @@ def main():
     print(args)
 
     # Load data
-    train_loader, val_loader, test_loader = datasets.load_data_from_arguments(args)
+    train_loader, val_loader, test_loader, _ = load_data_from_arguments(args)
 
     # Options
     optimization_args = {

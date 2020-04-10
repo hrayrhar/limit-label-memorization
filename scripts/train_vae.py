@@ -1,6 +1,6 @@
 from methods.vae import VAE
 from modules import training
-import modules.data_utils as datasets
+from nnlib.nnlib.data_utils.base import load_data_from_arguments, revert_normalization
 import argparse
 import json
 
@@ -35,7 +35,7 @@ def main():
     print(args)
 
     # Load data
-    train_loader, val_loader, test_loader = datasets.load_data_from_arguments(args)
+    train_loader, val_loader, test_loader, _ = load_data_from_arguments(args)
 
     # Options
     optimization_args = {
@@ -48,7 +48,7 @@ def main():
     with open(args.config, 'r') as f:
         architecture_args = json.load(f)
 
-    revert_normalization = (lambda x: datasets.revert_normalization(x, train_loader.dataset))
+    revert_normalization = (lambda x: revert_normalization(x, train_loader.dataset))
 
     model = VAE(input_shape=train_loader.dataset[0][0].shape,
                 architecture_args=architecture_args,

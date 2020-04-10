@@ -1,5 +1,5 @@
 from modules import utils
-import modules.data_utils as datasets
+from nnlib.nnlib.data_utils.base import load_data_from_arguments
 import argparse
 import torch
 import os
@@ -34,7 +34,7 @@ def main():
     print(args)
 
     # Load data
-    _, _, test_loader = datasets.load_data_from_arguments(args)
+    _, _, test_loader, _ = load_data_from_arguments(args)
 
     print(f"Testing the model saved at {args.load_from}")
     model = utils.load(args.load_from, device=args.device)
