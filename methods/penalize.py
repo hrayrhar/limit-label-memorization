@@ -2,28 +2,20 @@ from modules import nn_utils, pretrained_models
 import torch
 import torch.nn.functional as F
 from methods import BaseClassifier
+from nnlib.nnlib.utils import capture_arguments_of_init
 
 
 class PenalizeLastLayerFixedForm(BaseClassifier):
     """ Penalizes the gradients of the last layer weights. The q network has the correct form:
     (s(a) - y) z^T. Therefore, with q predicts y.
     """
+    @capture_arguments_of_init
     def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
                  grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, **kwargs):
         super(PenalizeLastLayerFixedForm, self).__init__(**kwargs)
 
-        self.args = {
-            'input_shape': input_shape,
-            'architecture_args': architecture_args,
-            'pretrained_arg': pretrained_arg,
-            'device': device,
-            'grad_weight_decay': grad_weight_decay,
-            'grad_l1_penalty': grad_l1_penalty,
-            'lamb': lamb,
-            'class': 'PenalizeLastLayerFixedForm'
-        }
-
         assert len(input_shape) == 3
+        self.args = None  # this will be modified by the decorator
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
         self.pretrained_arg = pretrained_arg

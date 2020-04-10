@@ -3,6 +3,7 @@ from nnlib.nnlib import utils
 import torch
 import torch.nn.functional as F
 from methods import BaseClassifier
+from nnlib.nnlib.utils import capture_arguments_of_init
 
 
 class StandardClassifier(BaseClassifier):
@@ -10,26 +11,14 @@ class StandardClassifier(BaseClassifier):
     Has an option to work on pretrained representation of x.
     Optionally, can add noise to the gradient wrt to the output logit.
     """
+    @capture_arguments_of_init
     def __init__(self, input_shape, architecture_args, pretrained_arg=None,
                  device='cuda', loss_function='ce', add_noise=False, noise_type='Gaussian',
                  noise_std=0.0, loss_function_param=None, load_from=None, **kwargs):
         super(StandardClassifier, self).__init__(**kwargs)
 
-        self.args = {
-            'input_shape': input_shape,
-            'architecture_args': architecture_args,
-            'pretrained_arg': pretrained_arg,
-            'device': device,
-            'loss_function': loss_function,
-            'add_noise': add_noise,
-            'noise_type': noise_type,
-            'noise_std': noise_std,
-            'loss_function_param': loss_function_param,
-            'load_from': load_from,
-            'class': 'StandardClassifier'
-        }
-
         assert len(input_shape) == 3
+        self.args = None  # this will be modified by the decorator
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
         self.pretrained_arg = pretrained_arg
@@ -104,25 +93,14 @@ class StandardClassifierWithNoise(BaseClassifier):
     """ Standard classifier trained with cross-entropy loss and noisy gradients.
     Has an option to work on pretrained representation of x.
     """
+    @capture_arguments_of_init
     def __init__(self, input_shape, architecture_args, pretrained_arg=None,
                  device='cuda', loss_function='ce', add_noise=False, noise_type='Gaussian',
                  noise_std=0.0, loss_function_param=None, **kwargs):
         super(StandardClassifierWithNoise, self).__init__(**kwargs)
 
-        self.args = {
-            'input_shape': input_shape,
-            'architecture_args': architecture_args,
-            'pretrained_arg': pretrained_arg,
-            'device': device,
-            'loss_function': loss_function,
-            'add_noise': add_noise,
-            'noise_type': noise_type,
-            'noise_std': noise_std,
-            'loss_function_param': loss_function_param,
-            'class': 'StandardClassifierWithNoise'
-        }
-
         assert len(input_shape) == 3
+        self.args = None  # this will be modified by the decorator
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
         self.pretrained_arg = pretrained_arg

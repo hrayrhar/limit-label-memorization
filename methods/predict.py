@@ -5,6 +5,7 @@ import torch
 import torch.nn.functional as F
 from methods import BaseClassifier
 from nnlib.nnlib import utils
+from nnlib.nnlib.utils import capture_arguments_of_init
 
 
 class PredictGradBaseClassifier(BaseClassifier):
@@ -38,30 +39,15 @@ class PredictGradBaseClassifier(BaseClassifier):
 class PredictGradOutput(PredictGradBaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     """
+    @capture_arguments_of_init
     def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
                  grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, sample_from_q=False,
                  q_dist='Gaussian', loss_function='ce', detach=True, load_from=None,
                  warm_up=0, **kwargs):
         super(PredictGradOutput, self).__init__(**kwargs)
 
-        self.args = {
-            'input_shape': input_shape,
-            'architecture_args': architecture_args,
-            'pretrained_arg': pretrained_arg,
-            'device': device,
-            'grad_weight_decay': grad_weight_decay,
-            'grad_l1_penalty': grad_l1_penalty,
-            'lamb': lamb,
-            'sample_from_q': sample_from_q,
-            'q_dist': q_dist,
-            'loss_function': loss_function,
-            'detach': detach,
-            'load_from': load_from,
-            'warm_up': warm_up,
-            'class': 'PredictGradOutput'
-        }
-
         assert len(input_shape) == 3
+        self.args = None  # this will be modified by the decorator
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
         self.pretrained_arg = pretrained_arg
@@ -241,25 +227,14 @@ class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     The q network uses the form of output gradients. A confusion matrix is also inferred.
     """
+    @capture_arguments_of_init
     def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
                  grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, small_qtop=False,
                  sample_from_q=False, **kwargs):
         super(PredictGradOutputFixedFormWithConfusion, self).__init__(**kwargs)
 
-        self.args = {
-            'input_shape': input_shape,
-            'architecture_args': architecture_args,
-            'pretrained_arg': pretrained_arg,
-            'device': device,
-            'grad_weight_decay': grad_weight_decay,
-            'grad_l1_penalty': grad_l1_penalty,
-            'lamb': lamb,
-            'small_qtop': small_qtop,
-            'sample_from_q': sample_from_q,
-            'class': 'PredictGradOutputFixedFormWithConfusion'
-        }
-
         assert len(input_shape) == 3
+        self.args = None  # this will be modified by the decorator
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
         self.pretrained_arg = pretrained_arg
@@ -395,22 +370,13 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     The q network has general form and uses label information.
     """
+    @capture_arguments_of_init
     def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
                  grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, **kwargs):
         super(PredictGradOutputGeneralFormUseLabel, self).__init__(**kwargs)
 
-        self.args = {
-            'input_shape': input_shape,
-            'architecture_args': architecture_args,
-            'device': device,
-            'pretrained_arg': pretrained_arg,
-            'grad_weight_decay': grad_weight_decay,
-            'grad_l1_penalty': grad_l1_penalty,
-            'lamb': lamb,
-            'class': 'PredictGradOutputGeneralFormUseLabel'
-        }
-
         assert len(input_shape) == 3
+        self.args = None  # this will be modified by the decorator
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
         self.pretrained_arg = pretrained_arg
