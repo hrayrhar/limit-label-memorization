@@ -11,8 +11,8 @@ import matplotlib
 matplotlib.use('agg')
 from matplotlib import pyplot
 
-import nnlib.nnlib.visualizations
 from nnlib.nnlib import utils
+import nnlib.nnlib.visualizations
 
 
 # import some nnlib visualizations

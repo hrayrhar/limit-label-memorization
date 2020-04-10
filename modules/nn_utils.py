@@ -1,7 +1,7 @@
 """ Some tools for building basic NN blocks """
-import numpy as np
 from torch import nn
 import torch
+import numpy as np
 
 
 def infer_shape(layers, input_shape):

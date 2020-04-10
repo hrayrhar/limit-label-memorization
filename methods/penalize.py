@@ -1,6 +1,7 @@
-from modules import nn_utils, pretrained_models
 import torch
 import torch.nn.functional as F
+
+from modules import nn_utils, pretrained_models
 from methods import BaseClassifier
 from nnlib.nnlib.utils import capture_arguments_of_init
 

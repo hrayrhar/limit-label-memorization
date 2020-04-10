@@ -1,11 +1,11 @@
-from modules import nn_utils, losses, pretrained_models
-from modules import visualization as vis
 import numpy as np
 import torch
 import torch.nn.functional as F
+
+from modules import nn_utils, losses, pretrained_models
+from modules import visualization as vis
 from methods import BaseClassifier
 from nnlib.nnlib import utils
-from nnlib.nnlib.utils import capture_arguments_of_init
 
 
 class PredictGradBaseClassifier(BaseClassifier):
@@ -39,7 +39,7 @@ class PredictGradBaseClassifier(BaseClassifier):
 class PredictGradOutput(PredictGradBaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     """
-    @capture_arguments_of_init
+    @utils.capture_arguments_of_init
     def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
                  grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, sample_from_q=False,
                  q_dist='Gaussian', loss_function='ce', detach=True, load_from=None,
@@ -227,7 +227,7 @@ class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     The q network uses the form of output gradients. A confusion matrix is also inferred.
     """
-    @capture_arguments_of_init
+    @utils.capture_arguments_of_init
     def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
                  grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, small_qtop=False,
                  sample_from_q=False, **kwargs):
@@ -370,7 +370,7 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
     """ Trains the classifier using predicted gradients. Only the output gradients are predicted.
     The q network has general form and uses label information.
     """
-    @capture_arguments_of_init
+    @utils.capture_arguments_of_init
     def __init__(self, input_shape, architecture_args, pretrained_arg=None, device='cuda',
                  grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, **kwargs):
         super(PredictGradOutputGeneralFormUseLabel, self).__init__(**kwargs)

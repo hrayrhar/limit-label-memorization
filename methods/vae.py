@@ -1,6 +1,7 @@
+import torch
+
 from modules import nn_utils, losses
 from modules import visualization as vis
-import torch
 from nnlib.nnlib.utils import capture_arguments_of_init
 from nnlib.nnlib.data_utils.base import revert_normalization
 

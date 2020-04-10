@@ -1,10 +1,12 @@
+import os
+import argparse
+import pickle
+
+import torch
+
 from nnlib.nnlib import utils
 from nnlib.nnlib.data_utils.base import load_data_from_arguments
 import methods
-import argparse
-import torch
-import os
-import pickle
 
 
 def main():

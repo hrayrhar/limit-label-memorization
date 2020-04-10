@@ -1,6 +1,7 @@
 from collections import defaultdict
-from nnlib.nnlib.method_utils import Method
+
 from modules import visualization as vis
+from nnlib.nnlib.method_utils import Method
 
 
 class BaseClassifier(Method):

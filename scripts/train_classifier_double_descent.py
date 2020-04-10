@@ -1,11 +1,13 @@
-import methods
-from nnlib.nnlib import utils, training, metrics, callbacks
-from nnlib.nnlib.data_utils.base import load_data_from_arguments
+import os
+import json
 import argparse
 import pickle
+
 import torch
-import json
-import os
+
+from nnlib.nnlib import utils, training, metrics, callbacks
+from nnlib.nnlib.data_utils.base import load_data_from_arguments
+import methods
 
 
 def main():

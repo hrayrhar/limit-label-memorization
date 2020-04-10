@@ -1,6 +1,7 @@
-from nnlib.nnlib import utils
 import torch
 import numpy as np
+
+from nnlib.nnlib import utils
 import methods
 
 

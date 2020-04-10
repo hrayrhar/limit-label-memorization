@@ -1,6 +1,7 @@
+from torchvision import models
 import torch
 import torch.nn.functional as F
-from torchvision import models
+
 from nnlib.nnlib import utils
 import methods
 

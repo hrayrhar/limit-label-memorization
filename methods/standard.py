@@ -1,9 +1,9 @@
-from modules import nn_utils, losses, pretrained_models, baseline_utils
-from nnlib.nnlib import utils
 import torch
 import torch.nn.functional as F
+
+from modules import nn_utils, losses, pretrained_models, baseline_utils
+from nnlib.nnlib import utils
 from methods import BaseClassifier
-from nnlib.nnlib.utils import capture_arguments_of_init
 
 
 class StandardClassifier(BaseClassifier):
@@ -11,7 +11,7 @@ class StandardClassifier(BaseClassifier):
     Has an option to work on pretrained representation of x.
     Optionally, can add noise to the gradient wrt to the output logit.
     """
-    @capture_arguments_of_init
+    @utils.capture_arguments_of_init
     def __init__(self, input_shape, architecture_args, pretrained_arg=None,
                  device='cuda', loss_function='ce', add_noise=False, noise_type='Gaussian',
                  noise_std=0.0, loss_function_param=None, load_from=None, **kwargs):
@@ -93,7 +93,7 @@ class StandardClassifierWithNoise(BaseClassifier):
     """ Standard classifier trained with cross-entropy loss and noisy gradients.
     Has an option to work on pretrained representation of x.
     """
-    @capture_arguments_of_init
+    @utils.capture_arguments_of_init
     def __init__(self, input_shape, architecture_args, pretrained_arg=None,
                  device='cuda', loss_function='ce', add_noise=False, noise_type='Gaussian',
                  noise_std=0.0, loss_function_param=None, **kwargs):
