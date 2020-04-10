@@ -1,4 +1,5 @@
-from modules import nn_utils, losses, pretrained_models, utils, baseline_utils
+from modules import nn_utils, losses, pretrained_models, baseline_utils
+from nnlib.nnlib import utils
 import torch
 import torch.nn.functional as F
 from methods import BaseClassifier
@@ -51,7 +52,8 @@ class StandardClassifier(BaseClassifier):
 
         if self.load_from is not None:
             print("Loading the classifier model from {}".format(load_from))
-            stored_net = utils.load(load_from, device='cpu')
+            import methods
+            stored_net = utils.load(load_from, methods=methods, device='cpu')
             stored_net_params = dict(stored_net.classifier.named_parameters())
             for key, param in self.classifier.named_parameters():
                 param.data = stored_net_params[key].data.to(self.device)

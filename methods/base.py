@@ -1,5 +1,5 @@
 from collections import defaultdict
-from modules import utils
+from nnlib.nnlib import utils
 from modules import visualization as vis
 import numpy as np
 import torch

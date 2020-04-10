@@ -1,9 +1,10 @@
-from modules import nn_utils, losses, utils, pretrained_models
+from modules import nn_utils, losses, pretrained_models
 from modules import visualization as vis
 import numpy as np
 import torch
 import torch.nn.functional as F
 from methods import BaseClassifier
+from nnlib.nnlib import utils
 
 
 class PredictGradBaseClassifier(BaseClassifier):
@@ -111,7 +112,8 @@ class PredictGradOutput(PredictGradBaseClassifier):
 
             if self.load_from is not None:
                 print("Loading the gradient predictor model from {}".format(load_from))
-                stored_net = utils.load(load_from, device='cpu')
+                import methods
+                stored_net = utils.load(load_from, methods=methods, device='cpu')
                 stored_net_params = dict(stored_net.classifier.named_parameters())
                 for key, param in self.q_network.named_parameters():
                     param.data = stored_net_params[key].data.to(self.device)
