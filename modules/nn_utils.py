@@ -3,57 +3,7 @@ from torch import nn
 import torch
 import numpy as np
 
-
-def infer_shape(layers, input_shape):
-    """Given a list of layers representing a sequential model and its input_shape, infers the output shape."""
-    input_shape = [x for x in input_shape]
-    if input_shape[0] is None:
-        input_shape[0] = 4  # should be more than 1, otherwise batch norm will not work
-    x = torch.tensor(np.random.normal(size=input_shape), dtype=torch.float, device='cpu')
-    for layer in layers:
-        x = layer(x)
-    output_shape = list(x.shape)
-    output_shape[0] = None
-    return output_shape
-
-
-def add_activation(layers, activation):
-    """Adds an activation function into a list of layers."""
-    if activation == 'relu':
-        layers.append(nn.ReLU(inplace=True))
-    if activation == 'sigmoid':
-        layers.append(nn.Sigmoid())
-    if activation == 'tanh':
-        layers.append(nn.Tanh())
-    if activation == 'softplus':
-        layers.append(nn.Softplus())
-    if activation == 'softmax':
-        layers.append(nn.Softmax(dim=1))
-    if activation == 'linear':
-        pass
-    return layers
-
-
-class Flatten(nn.Module):
-    def forward(self, input):
-        return input.view(input.size(0), -1)
-
-
-class Reshape(nn.Module):
-    def __init__(self, shape):
-        super(Reshape, self).__init__()
-        self._shape = tuple([-1, ] + list(shape))
-
-    def forward(self, x):
-        return x.view(self._shape)
-
-
-class Identity(nn.Module):
-    def __init__(self):
-        super(Identity, self).__init__()
-
-    def forward(self, x):
-        return x
+from nnlib.nnlib.nn_utils import infer_shape, add_activation, Flatten, Reshape, Identity
 
 
 def parse_feed_forward(args, input_shape):
@@ -62,14 +12,14 @@ def parse_feed_forward(args, input_shape):
     # parse known networks
     if isinstance(args, dict):
         if args['net'] == 'resnet-cifar10':
-            from modules.resnet_cifar import ResNet34
-            net = ResNet34(num_classes=10)
+            from nnlib.nnlib.networks.resnet_cifar import resnet34
+            net = resnet34(num_classes=10)
             output_shape = infer_shape([net], input_shape)
             print("output.shape:", output_shape)
             return net, output_shape
         if args['net'] == 'resnet-cifar100':
-            from modules.resnet_cifar import ResNet34
-            net = ResNet34(num_classes=100)
+            from nnlib.nnlib.networks.resnet_cifar import resnet34
+            net = resnet34(num_classes=100)
             output_shape = infer_shape([net], input_shape)
             print("output.shape:", output_shape)
             return net, output_shape
