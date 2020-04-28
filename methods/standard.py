@@ -17,7 +17,6 @@ class StandardClassifier(BaseClassifier):
                  noise_std=0.0, loss_function_param=None, load_from=None, **kwargs):
         super(StandardClassifier, self).__init__(**kwargs)
 
-        assert len(input_shape) == 3
         self.args = None  # this will be modified by the decorator
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
@@ -99,7 +98,6 @@ class StandardClassifierWithNoise(BaseClassifier):
                  noise_std=0.0, loss_function_param=None, **kwargs):
         super(StandardClassifierWithNoise, self).__init__(**kwargs)
 
-        assert len(input_shape) == 3
         self.args = None  # this will be modified by the decorator
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args

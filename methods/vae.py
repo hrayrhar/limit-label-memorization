@@ -14,7 +14,6 @@ class VAE(torch.nn.Module):
     def __init__(self, input_shape, architecture_args, device='cuda', **kwargs):
         super(VAE, self).__init__()
 
-        assert len(input_shape) == 3
         self.args = None  # this will be modified by the decorator
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args

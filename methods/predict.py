@@ -46,7 +46,6 @@ class PredictGradOutput(PredictGradBaseClassifier):
                  warm_up=0, **kwargs):
         super(PredictGradOutput, self).__init__(**kwargs)
 
-        assert len(input_shape) == 3
         self.args = None  # this will be modified by the decorator
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
@@ -68,7 +67,7 @@ class PredictGradOutput(PredictGradBaseClassifier):
         elif self.q_dist == 'Laplace':
             self.grad_replacement_class = nn_utils.get_grad_replacement_class(
                 sample=self.sample_from_q, standard_dev=np.sqrt(2.0) / (self.lamb + 1e-6), q_dist=self.q_dist)
-        elif self.q_dist == 'dot':
+        elif self.q_dist in ['dot', 'ce']:
             assert not self.sample_from_q
             self.grad_replacement_class = nn_utils.get_grad_replacement_class(sample=False)
         else:
@@ -90,6 +89,7 @@ class PredictGradOutput(PredictGradBaseClassifier):
                 torch.nn.Linear(128, self.num_classes)).to(device)
 
             self.q_network = torch.nn.Sequential(q_base, q_top)
+            self.q_network = self.q_network.to(device)
         else:
             self.q_network, _ = nn_utils.parse_feed_forward(args=self.architecture_args['q-network'],
                                                             input_shape=self.input_shape)
@@ -181,6 +181,11 @@ class PredictGradOutput(PredictGradBaseClassifier):
         elif self.q_dist == 'dot':
             # this corresponds to Taylor approximation of L(w + g_t)
             info_penalty = -torch.mean((grad_pred * grad_actual).sum(dim=1), dim=0)
+        elif self.q_dist == 'ce':
+            # TODO: clarify which distribution will give this
+            info_penalty = losses.get_classification_loss(target=y_one_hot,
+                                                          pred=outputs['q_label_pred'],
+                                                          loss_function='ce')
         else:
             raise NotImplementedError()
 
@@ -233,7 +238,6 @@ class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
                  sample_from_q=False, **kwargs):
         super(PredictGradOutputFixedFormWithConfusion, self).__init__(**kwargs)
 
-        assert len(input_shape) == 3
         self.args = None  # this will be modified by the decorator
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args
@@ -375,7 +379,6 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
                  grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, **kwargs):
         super(PredictGradOutputGeneralFormUseLabel, self).__init__(**kwargs)
 
-        assert len(input_shape) == 3
         self.args = None  # this will be modified by the decorator
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args

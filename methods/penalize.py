@@ -15,7 +15,6 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
                  grad_weight_decay=0.0, grad_l1_penalty=0.0, lamb=1.0, **kwargs):
         super(PenalizeLastLayerFixedForm, self).__init__(**kwargs)
 
-        assert len(input_shape) == 3
         self.args = None  # this will be modified by the decorator
         self.input_shape = [None] + list(input_shape)
         self.architecture_args = architecture_args

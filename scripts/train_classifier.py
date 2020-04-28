@@ -51,7 +51,7 @@ def main():
     parser.add_argument('--pretrained_arg', '-r', type=str, default=None)
     parser.add_argument('--sample_from_q', action='store_true', dest='sample_from_q')
     parser.set_defaults(sample_from_q=False)
-    parser.add_argument('--q_dist', type=str, default='Gaussian', choices=['Gaussian', 'Laplace', 'dot'])
+    parser.add_argument('--q_dist', type=str, default='Gaussian', choices=['Gaussian', 'Laplace', 'dot', 'ce'])
     parser.add_argument('--no-detach', dest='detach', action='store_false')
     parser.set_defaults(detach=True)
     parser.add_argument('--warm_up', type=int, default=0, help='Number of epochs to skip before '
