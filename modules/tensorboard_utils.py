@@ -13,7 +13,7 @@ def find_latest_tfevents_file(dir_path):
 
 def extract_tag_from_tensorboard(tb_events_file, tag):
     ret_events = []
-    for event in tf.train.summary_iterator(tb_events_file):
+    for event in tf.compat.v1.train.summary_iterator(tb_events_file):
         step = event.step
         for value in event.summary.value:
             if value.tag == tag:
