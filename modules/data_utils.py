@@ -4,6 +4,7 @@ from PIL import Image
 import numpy as np
 import os
 import torch
+import pickle
 
 
 def split(n_samples, val_ratio, seed):
@@ -161,7 +162,7 @@ def load_mnist_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42, 
 def load_cifar_datasets(val_ratio=0.2, noise_level=0.0, data_augmentation=False,
                         confusion_function=uniform_error_confusion_matrix,
                         num_train_examples=None, clean_validation=False,
-                        n_classes=10, seed=42):
+                        n_classes=10, seed=42, exclude_percent=0.0):
     if n_classes == 10:
         data_dir = os.path.join(os.path.dirname(__file__), '../data/cifar10/')
     elif n_classes == 100:
@@ -196,6 +197,16 @@ def load_cifar_datasets(val_ratio=0.2, noise_level=0.0, data_augmentation=False,
     train_indices, val_indices = split(len(train_data), val_ratio, seed)
     if num_train_examples is not None:
         train_indices = np.random.choice(train_indices, num_train_examples, replace=False)
+
+    if exclude_percent > 0:
+        cur_dir = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(cur_dir, 'resources', 'cifar100_worst_to_best_order.pkl'), 'rb') as f:
+            worst_to_best_oder = pickle.load(f)
+        exclude_count = int(0.01 * exclude_percent * len(train_indices))
+        print(f"Excluding the worst {exclude_count} examples")
+        include_indices = worst_to_best_oder[exclude_count:]
+        train_indices = train_indices[include_indices]
+
     train_data = Subset(train_data, train_indices)
     val_data = Subset(val_data, val_indices)
 
@@ -214,7 +225,7 @@ def load_cifar_datasets(val_ratio=0.2, noise_level=0.0, data_augmentation=False,
 
 def load_cifar_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42, drop_last=False,
                        num_train_examples=None, data_augmentation=False, clean_validation=False,
-                       confusion_function=uniform_error_confusion_matrix,  n_classes=10):
+                       confusion_function=uniform_error_confusion_matrix, n_classes=10, exclude_percent=0.0):
     train_data, val_data, test_data, _ = load_cifar_datasets(val_ratio=val_ratio,
                                                              noise_level=noise_level,
                                                              data_augmentation=data_augmentation,
@@ -222,7 +233,8 @@ def load_cifar_loaders(val_ratio=0.2, batch_size=128, noise_level=0.0, seed=42, 
                                                              num_train_examples=num_train_examples,
                                                              clean_validation=clean_validation,
                                                              n_classes=n_classes,
-                                                             seed=seed)
+                                                             seed=seed,
+                                                             exclude_percent=exclude_percent)
 
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True,
                               num_workers=4, drop_last=drop_last)
@@ -424,7 +436,8 @@ def load_data_from_arguments(args):
             confusion_function=confusion_function,
             clean_validation=args.clean_validation,
             n_classes=100,
-            seed=args.seed)
+            seed=args.seed,
+            exclude_percent=args.exclude_percent)
 
     if args.dataset == 'clothing1m':
         train_loader, val_loader, test_loader = load_clothing1M_loaders(

@@ -49,6 +49,7 @@ def main():
 
     parser.add_argument('--k', '-k', type=int, required=False, default=10,
                         help='width parameter of ResNet18-k')
+    parser.add_argument('--exclude_percent', type=float, default=0.0)
     args = parser.parse_args()
     print(args)
 
