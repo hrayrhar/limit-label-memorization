@@ -1,8 +1,10 @@
 {
   "classifier": {
-    "net": "resnet-clothing1M"
+    "net": "resnet50",
+    "num_classes": 14
   },
   "q-network": {
-    "net": "resnet-clothing1M"
+    "net": "resnet50",
+    "num_classes": 14
   }
 }

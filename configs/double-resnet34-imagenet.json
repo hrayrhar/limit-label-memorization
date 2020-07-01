@@ -1,8 +1,8 @@
 {
   "classifier": {
-    "net": "resnet34-imagenet"
+    "net": "resnet34"
   },
   "q-network": {
-    "net": "resnet34-imagenet"
+    "net": "resnet34"
   }
 }

@@ -4,9 +4,10 @@ from modules import nn_utils, losses
 from modules import visualization as vis
 from nnlib.nnlib.utils import capture_arguments_of_init
 from nnlib.nnlib.data_utils.base import revert_normalization
+from nnlib.nnlib.method_utils import Method
 
 
-class VAE(torch.nn.Module):
+class VAE(Method):
     """ VAE with two additional regularization parameters.
      `beta`: weight of the KL term, as in beta-VAE
     """
@@ -24,12 +25,12 @@ class VAE(torch.nn.Module):
         # initialize the network
         self.hidden_shape = [None, self.architecture_args['hidden_dim']]
 
-        self.decoder, _ = nn_utils.parse_feed_forward(args=self.architecture_args['decoder'],
-                                                      input_shape=self.hidden_shape)
+        self.decoder, _ = nn_utils.parse_network_from_config(args=self.architecture_args['decoder'],
+                                                             input_shape=self.hidden_shape)
         self.decoder = self.decoder.to(device)
 
-        self.encoder, _ = nn_utils.parse_feed_forward(args=self.architecture_args['encoder'],
-                                                      input_shape=self.input_shape)
+        self.encoder, _ = nn_utils.parse_network_from_config(args=self.architecture_args['encoder'],
+                                                             input_shape=self.input_shape)
 
         self.encoder = self.encoder.to(device)
 
@@ -59,9 +60,8 @@ class VAE(torch.nn.Module):
         for k, v in z_params.items():
             out[k] = v
 
-        # add input if needed
-        if detailed_output:
-            out['x'] = x
+        # add input too for convenience
+        out['x'] = x
 
         return out
 

@@ -27,8 +27,8 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
         self.num_classes = self.architecture_args['classifier'][-1]['dim']
         self.last_layer_dim = self.architecture_args['classifier'][-2]['dim']
 
-        self.classifier_base, _ = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'][:-1],
-                                                              input_shape=self.input_shape)
+        self.classifier_base, _ = nn_utils.parse_network_from_config(args=self.architecture_args['classifier'][:-1],
+                                                                     input_shape=self.input_shape)
         self.classifier_base = self.classifier_base.to(device)
         self.classifier_last_layer = torch.nn.Linear(self.last_layer_dim,
                                                      self.num_classes,
@@ -45,8 +45,8 @@ class PenalizeLastLayerFixedForm(BaseClassifier):
 
             self.q_network = torch.nn.Sequential(q_base, q_top)
         else:
-            self.q_network, _ = nn_utils.parse_feed_forward(args=self.architecture_args['q-network'],
-                                                            input_shape=self.input_shape)
+            self.q_network, _ = nn_utils.parse_network_from_config(args=self.architecture_args['q-network'],
+                                                                   input_shape=self.input_shape)
             self.q_network = self.q_network.to(device)
 
     def forward(self, inputs, grad_enabled=False, **kwargs):

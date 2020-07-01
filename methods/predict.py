@@ -74,8 +74,8 @@ class PredictGradOutput(PredictGradBaseClassifier):
             raise NotImplementedError()
 
         # initialize the network
-        self.classifier, output_shape = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                                    input_shape=self.input_shape)
+        self.classifier, output_shape = nn_utils.parse_network_from_config(args=self.architecture_args['classifier'],
+                                                                           input_shape=self.input_shape)
         self.classifier = self.classifier.to(device)
         self.num_classes = output_shape[-1]
 
@@ -91,8 +91,8 @@ class PredictGradOutput(PredictGradBaseClassifier):
             self.q_network = torch.nn.Sequential(q_base, q_top)
             self.q_network = self.q_network.to(device)
         else:
-            self.q_network, _ = nn_utils.parse_feed_forward(args=self.architecture_args['q-network'],
-                                                            input_shape=self.input_shape)
+            self.q_network, _ = nn_utils.parse_network_from_config(args=self.architecture_args['q-network'],
+                                                                   input_shape=self.input_shape)
             self.q_network = self.q_network.to(device)
 
             if self.load_from is not None:
@@ -251,8 +251,8 @@ class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
             sample=self.sample_from_q, standard_dev=np.sqrt(1.0 / 2.0 / (self.lamb + 1e-12)))
 
         # initialize the network
-        self.classifier, output_shape = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                                    input_shape=self.input_shape)
+        self.classifier, output_shape = nn_utils.parse_network_from_config(args=self.architecture_args['classifier'],
+                                                                           input_shape=self.input_shape)
         self.classifier = self.classifier.to(device)
         self.num_classes = output_shape[-1]
 
@@ -260,8 +260,8 @@ class PredictGradOutputFixedFormWithConfusion(PredictGradBaseClassifier):
             self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, device)
             q_base_shape = self.q_base.output_shape
         else:
-            self.q_base, q_base_shape = nn_utils.parse_feed_forward(args=self.architecture_args['q-base'],
-                                                                    input_shape=self.input_shape)
+            self.q_base, q_base_shape = nn_utils.parse_network_from_config(args=self.architecture_args['q-base'],
+                                                                           input_shape=self.input_shape)
             self.q_base = self.q_base.to(device)
 
         if small_qtop:
@@ -388,8 +388,8 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
         self.lamb = lamb
 
         # initialize the network
-        self.classifier, _ = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                         input_shape=self.input_shape)
+        self.classifier, _ = nn_utils.parse_network_from_config(args=self.architecture_args['classifier'],
+                                                                input_shape=self.input_shape)
         self.classifier = self.classifier.to(device)
         self.num_classes = self.architecture_args['classifier'][-1]['dim']
 
@@ -397,8 +397,8 @@ class PredictGradOutputGeneralFormUseLabel(PredictGradBaseClassifier):
             self.q_base = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, device)
             q_base_shape = self.q_base.output_shape
         else:
-            self.q_base, q_base_shape = nn_utils.parse_feed_forward(args=self.architecture_args['q-base'],
-                                                                    input_shape=self.input_shape)
+            self.q_base, q_base_shape = nn_utils.parse_network_from_config(args=self.architecture_args['q-base'],
+                                                                           input_shape=self.input_shape)
             self.q_base = self.q_base.to(device)
 
         # NOTE: we want to use classifier parameters too

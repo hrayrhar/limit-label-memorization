@@ -31,8 +31,8 @@ class StandardClassifier(BaseClassifier):
         # initialize the network
         self.repr_net = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, device)
         self.repr_shape = self.repr_net.output_shape
-        self.classifier, output_shape = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                                    input_shape=self.repr_shape)
+        self.classifier, output_shape = nn_utils.parse_network_from_config(args=self.architecture_args['classifier'],
+                                                                           input_shape=self.repr_shape)
         self.num_classes = output_shape[-1]
         self.classifier = self.classifier.to(device)
         self.grad_noise_class = nn_utils.get_grad_noise_class(standard_dev=noise_std, q_dist=noise_type)
@@ -111,8 +111,8 @@ class StandardClassifierWithNoise(BaseClassifier):
         # initialize the network
         self.repr_net = pretrained_models.get_pretrained_model(self.pretrained_arg, self.input_shape, device)
         self.repr_shape = self.repr_net.output_shape
-        self.classifier, output_shape = nn_utils.parse_feed_forward(args=self.architecture_args['classifier'],
-                                                                    input_shape=self.repr_shape)
+        self.classifier, output_shape = nn_utils.parse_network_from_config(args=self.architecture_args['classifier'],
+                                                                           input_shape=self.repr_shape)
         self.num_classes = output_shape[-1]
         self.classifier = self.classifier.to(device)
 
