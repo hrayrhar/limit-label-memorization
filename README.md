@@ -3,11 +3,12 @@
 The author implementation of LIMIT method described in the [paper](https://arxiv.org/abs/2002.07933) *"Improving generalization by controlling label-noise information in neural network weights"* by Hrayr Harutyunyan, Kyle Reing, Greg Ver Steeg, and Aram Galstyan.
 To cite the paper please use the following BibTeX:
 ```text
-@article{harutyunyan2020improving,
-  title={Improving Generalization by Controlling Label-Noise Information in Neural Network Weights},
-  author={Harutyunyan, Hrayr and Reing, Kyle and Steeg, Greg Ver and Galstyan, Aram},
-  journal={arXiv preprint arXiv:2002.07933},
-  year={2020}
+@incollection{harutyunyan2020improving,
+ author = {Harutyunyan, Hrayr and Reing, Kyle and Ver Steeg, Greg and Galstyan, Aram},
+ booktitle = {Proceedings of Machine Learning and Systems 2020},
+ pages = {5172--5182},
+ title = {Improving generalization by controlling label-noise information in neural network weights},
+ year = {2020}
 }
 ```
 
