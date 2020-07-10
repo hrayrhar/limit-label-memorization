@@ -1,0 +1,3 @@
+[submodule "nnlib"]
+	path = nnlib
+	url = https://github.com/hrayrhar/nnlib.git

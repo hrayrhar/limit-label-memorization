@@ -1,7 +1,9 @@
+from torchvision import models
 import torch
 import torch.nn.functional as F
-from torchvision import models
-from modules import utils
+
+from nnlib.nnlib import utils
+import methods
 
 
 class PretrainedResNet34(torch.nn.Module):
@@ -44,7 +46,7 @@ class PretrainedResNet34(torch.nn.Module):
 class PretrainedVAE(torch.nn.Module):
     def __init__(self, path, device):
         super(PretrainedVAE, self).__init__()
-        self.vae = utils.load(path, device=device)
+        self.vae = utils.load(path, methods=methods, device=device)
         self.output_shape = [None, 128]
 
         # freeze weights

@@ -1,9 +1,12 @@
-from modules import utils
-import modules.data_utils as datasets
-import argparse
-import torch
 import os
+import argparse
 import pickle
+
+import torch
+
+from nnlib.nnlib import utils
+from nnlib.nnlib.data_utils.base import load_data_from_arguments
+import methods
 
 
 def main():
@@ -34,10 +37,10 @@ def main():
     print(args)
 
     # Load data
-    _, _, test_loader = datasets.load_data_from_arguments(args)
+    _, _, test_loader, _ = load_data_from_arguments(args)
 
     print(f"Testing the model saved at {args.load_from}")
-    model = utils.load(args.load_from, device=args.device)
+    model = utils.load(args.load_from, methods=methods, device=args.device)
     ret = utils.apply_on_dataset(model, test_loader.dataset, batch_size=args.batch_size,
                                  output_keys_regexp='pred|label', description='Testing')
     pred = ret['pred']

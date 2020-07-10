@@ -1,8 +1,9 @@
 import os
-import pandas as pd
-from tqdm import tqdm
 import pickle
 import argparse
+
+import pandas as pd
+from tqdm import tqdm
 
 
 def main():

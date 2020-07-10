@@ -1,17 +1,22 @@
-import methods
-from modules import training, utils, metrics
-import modules.data_utils as datasets
+import os
+import json
 import argparse
 import pickle
+
 import torch
-import json
-import os
+
+from nnlib.nnlib import utils, training, metrics, callbacks
+from nnlib.nnlib.data_utils.base import load_data_from_arguments
+import methods
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', '-c', type=str, required=True)
     parser.add_argument('--device', '-d', default='cuda')
+    parser.add_argument('--all_device_ids', nargs='+', type=str, default=None,
+                        help="If not None, this list specifies devices for multiple GPU training. "
+                             "The first device should match with the main device (args.device).")
 
     parser.add_argument('--batch_size', '-b', type=int, default=256)
     parser.add_argument('--epochs', '-e', type=int, default=400)
@@ -46,7 +51,7 @@ def main():
     parser.add_argument('--pretrained_arg', '-r', type=str, default=None)
     parser.add_argument('--sample_from_q', action='store_true', dest='sample_from_q')
     parser.set_defaults(sample_from_q=False)
-    parser.add_argument('--q_dist', type=str, default='Gaussian', choices=['Gaussian', 'Laplace', 'dot'])
+    parser.add_argument('--q_dist', type=str, default='Gaussian', choices=['Gaussian', 'Laplace', 'dot', 'ce'])
     parser.add_argument('--no-detach', dest='detach', action='store_false')
     parser.set_defaults(detach=True)
     parser.add_argument('--warm_up', type=int, default=0, help='Number of epochs to skip before '
@@ -64,7 +69,7 @@ def main():
     print(args)
 
     # Load data
-    train_loader, val_loader, test_loader = datasets.load_data_from_arguments(args)
+    train_loader, val_loader, test_loader, _ = load_data_from_arguments(args)
 
     # Options
     optimization_args = {
@@ -109,9 +114,14 @@ def main():
                         detach=args.detach,
                         warm_up=args.warm_up)
 
-    metrics_list = []
+    metrics_list = [metrics.Accuracy(output_key='pred')]
     if args.dataset == 'imagenet':
         metrics_list.append(metrics.TopKAccuracy(k=5, output_key='pred'))
+
+    callbacks_list = [callbacks.SaveBestWithMetric(metric=metrics_list[0], partition='val', direction='max')]
+
+    stopper = callbacks.EarlyStoppingWithMetric(metric=metrics_list[0], stopping_param=args.stopping_param,
+                                                partition='val', direction='max')
 
     training.train(model=model,
                    train_loader=train_loader,
@@ -122,13 +132,15 @@ def main():
                    optimization_args=optimization_args,
                    log_dir=args.log_dir,
                    args_to_log=args,
-                   stopping_param=args.stopping_param,
-                   metrics=metrics_list)
+                   stopper=stopper,
+                   metrics=metrics_list,
+                   callbacks=callbacks_list,
+                   device_ids=args.all_device_ids)
 
     # if training finishes successfully, compute the test score
     print("Testing the best validation model...")
     model = utils.load(os.path.join(args.log_dir, 'checkpoints', 'best_val.mdl'),
-                       device=args.device)
+                       methods=methods, device=args.device)
     pred = utils.apply_on_dataset(model, test_loader.dataset, batch_size=args.batch_size,
                                   output_keys_regexp='pred', description='Testing')['pred']
     labels = [p[1] for p in test_loader.dataset]

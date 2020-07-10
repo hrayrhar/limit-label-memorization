@@ -1,8 +1,10 @@
 {
   "classifier": {
-    "net": "resnet-cifar10"
+    "net": "resnet34-cifar",
+    "num_classes": 10
   },
   "q-network": {
-    "net": "resnet-cifar10"
+    "net": "resnet34-cifar",
+    "num_classes": 10
   }
 }

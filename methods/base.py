@@ -1,51 +1,19 @@
 from collections import defaultdict
-from modules import utils
+
 from modules import visualization as vis
-import numpy as np
-import torch
+from nnlib.nnlib.method_utils import Method
 
 
-class BaseClassifier(torch.nn.Module):
+class BaseClassifier(Method):
     """ Abstract class for classifiers.
     """
     def __init__(self, **kwargs):
         super(BaseClassifier, self).__init__()
         # initialize and use later
-        self._accuracy = defaultdict(list)
         self._current_iteration = defaultdict(lambda: 0)
-        self._best_val_accuracy = -1.0
-        self._is_best_so_far = False
 
-    def on_epoch_start(self, partition, **kwargs):
-        self._accuracy[partition] = []
-
-    def on_iteration_end(self, info, batch_labels, partition, **kwargs):
+    def on_iteration_end(self, partition, **kwargs):
         self._current_iteration[partition] += 1
-        pred = utils.to_numpy(info['pred']).argmax(axis=1).astype(np.int)
-        batch_labels = utils.to_numpy(batch_labels[0]).astype(np.int)
-        self._accuracy[partition].append((pred == batch_labels).astype(np.float).mean())
-
-    def on_epoch_end(self, partition, tensorboard, epoch, **kwargs):
-        accuracy = np.mean(self._accuracy[partition])
-        if partition == 'val':
-            if accuracy > self._best_val_accuracy:
-                self._best_val_accuracy = accuracy
-                self._is_best_so_far = True
-            else:
-                self._is_best_so_far = False
-        tensorboard.add_scalar('metrics/{}_accuracy'.format(partition), accuracy, epoch)
-
-    def is_best_val_result(self, **kwargs):
-        return self._is_best_so_far, self._best_val_accuracy
-
-    def before_weight_update(self, **kwargs):
-        pass
-
-    def forward(self, *input, **kwargs):
-        raise NotImplementedError()
-
-    def compute_loss(self, *input, **kwargs):
-        raise NotImplementedError()
 
     def visualize(self, train_loader, val_loader, tensorboard=None, epoch=None, **kwargs):
         visualizations = {}

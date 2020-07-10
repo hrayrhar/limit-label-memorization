@@ -1,8 +1,8 @@
 {
   "classifier": {
-    "net": "resnet50-imagenet"
+    "net": "resnet50"
   },
   "q-network": {
-    "net": "resnet50-imagenet"
+    "net": "resnet50"
   }
 }

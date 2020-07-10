@@ -1,5 +1,6 @@
-import pandas as pd
 import pickle
+
+import pandas as pd
 
 
 method_columns = ['model_class', 'config', 'loss_function', 'q_dist', 'sample_from_q',
