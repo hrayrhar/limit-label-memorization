@@ -52,8 +52,9 @@ def main():
 
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate')
 
-    parser.add_argument('--k', '-k', type=int, required=True, default=10,
+    parser.add_argument('--k', '-k', type=int, required=False, default=10,
                         help='width parameter of ResNet18-k')
+    parser.add_argument('--exclude_percent', type=float, default=0.0)
     args = parser.parse_args()
     print(args)
 
@@ -74,10 +75,10 @@ def main():
 
         # set the width parameter k
         if ('classifier' in architecture_args and
-                architecture_args['classifier'].get('net', '') == 'double-descent-cifar10-resnet18'):
+                architecture_args['classifier'].get('net', '').find('double-descent') != -1):
             architecture_args['classifier']['k'] = args.k
         if ('q-network' in architecture_args and
-                architecture_args['q-network'].get('net', '') == 'double-descent-cifar10-resnet18'):
+                architecture_args['classifier'].get('net', '').find('double-descent') != -1):
             architecture_args['q-network']['k'] = args.k
 
     model_class = getattr(methods, args.model_class)
