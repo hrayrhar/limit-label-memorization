@@ -17,6 +17,12 @@ def parse_network_from_config(args, input_shape):
             output_shape = infer_shape([net], input_shape)
             print("output.shape:", output_shape)
             return net, output_shape
+        if args['net'] == 'double-descent-cifar100-resnet18':
+            from modules.resnet18_double_descent import make_resnet18k
+            net = make_resnet18k(k=args['k'], num_classes=100)
+            output_shape = infer_shape([net], input_shape)
+            print("output.shape:", output_shape)
+            return net, output_shape
 
     return nnlib_nn_utils.parse_network_from_config(args=args, input_shape=input_shape)
 

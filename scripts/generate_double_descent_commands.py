@@ -49,25 +49,25 @@ save_iter = 400
 vis_iter = 400
 dataset = "uniform-noise-cifar10"
 arch_config = 'configs/double-descent-cifar10-resnet18.json'
-#
-#
-# """ Standard Classsifier """
-# method = "StandardClassifier"
-#
-# commands = []
-# for n in ns:
-#     for k in ks:
-#         for seed in seeds:
-#             command = f"python -um scripts.train_classifier_double_descent -c {arch_config} -d {device} -e {n_epochs} " \
-#                 f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A -m {method} " \
-#                 f"--seed {seed} -k {k} " \
-#                 f"-l double_descent_logs/{dataset}-noise{n}-augment-{method}-k{k}-seed{seed}"
-#             commands += process_command(command)
-#
-# # merge_commands(commands, gpu_cnt=10, max_job_cnt=1)
-#
-#
-# """ PredictGradOutput """
+
+
+""" Standard Classsifier """
+method = "StandardClassifier"
+
+commands = []
+for n in ns:
+    for k in ks:
+        for seed in seeds:
+            command = f"python -um scripts.train_classifier_double_descent -c {arch_config} -d {device} -e {n_epochs} " \
+                f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A -m {method} " \
+                f"--seed {seed} -k {k} " \
+                f"-l double_descent_logs/{dataset}-noise{n}-augment-{method}-k{k}-seed{seed}"
+            commands += process_command(command)
+
+merge_commands(commands, gpu_cnt=10, max_job_cnt=1)
+
+
+""" PredictGradOutput """
 # method = "PredictGradOutput"
 # Ls = [1.0]
 # q_dists = ['Laplace']
@@ -149,17 +149,17 @@ arch_config = 'configs/double-descent-cifar100-resnet18.json'
 
 
 """ Standard Classifier with excluded data """
-method = "StandardClassifier"
-exclude_percent = 5
-
-commands = []
-for n in ns:
-    for k in ks:
-        for seed in seeds:
-            command = f"python -um scripts.train_classifier_double_descent -c {arch_config} -d {device} -e {n_epochs} " \
-                f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A -m {method} " \
-                f"--seed {seed} -k {k} --exclude_percent {exclude_percent} " \
-                f"-l double_descent_logs/{dataset}-noise{n}-exclude{exclude_percent}-augment-{method}-k{k}-seed{seed}"
-            commands += process_command(command)
-
-merge_commands(commands, gpu_cnt=100, max_job_cnt=1)
+# method = "StandardClassifier"
+# exclude_percent = 5
+#
+# commands = []
+# for n in ns:
+#     for k in ks:
+#         for seed in seeds:
+#             command = f"python -um scripts.train_classifier_double_descent -c {arch_config} -d {device} -e {n_epochs} " \
+#                 f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A -m {method} " \
+#                 f"--seed {seed} -k {k} --exclude_percent {exclude_percent} " \
+#                 f"-l double_descent_logs/{dataset}-noise{n}-exclude{exclude_percent}-augment-{method}-k{k}-seed{seed}"
+#             commands += process_command(command)
+#
+# merge_commands(commands, gpu_cnt=100, max_job_cnt=1)
