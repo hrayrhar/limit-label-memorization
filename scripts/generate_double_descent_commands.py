@@ -38,18 +38,17 @@ def process_command(command):
 
 
 ########################################################################################################################
-######################                            CIFAR10-error                                   ######################
+######################                       uniform-noise-cifar10                               #######################
 ########################################################################################################################
-# ns = [0.2]
-# ks = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
-# seeds = range(42, 43)
-# device = 'cuda'
-# n_epochs = 4000
-# save_iter = 400
-# vis_iter = 400
-# label_noise_type = "error"
-# dataset = "cifar10"
-# arch_config = 'configs/double-descent-cifar10-resnet18.json'
+ns = [0.2]
+ks = [2, 4, 6, 8, 10, 12, 14, 16, 18, 20]
+seeds = range(42, 43)
+device = 'cuda'
+n_epochs = 4000
+save_iter = 400
+vis_iter = 400
+dataset = "uniform-noise-cifar10"
+arch_config = 'configs/double-descent-cifar10-resnet18.json'
 #
 #
 # """ Standard Classsifier """
@@ -60,9 +59,9 @@ def process_command(command):
 #     for k in ks:
 #         for seed in seeds:
 #             command = f"python -um scripts.train_classifier_double_descent -c {arch_config} -d {device} -e {n_epochs} " \
-#                 f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A --label_noise_type {label_noise_type} -m {method} " \
+#                 f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A -m {method} " \
 #                 f"--seed {seed} -k {k} " \
-#                 f"-l double_descent_logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-k{k}-seed{seed}"
+#                 f"-l double_descent_logs/{dataset}-noise{n}-augment-{method}-k{k}-seed{seed}"
 #             commands += process_command(command)
 #
 # # merge_commands(commands, gpu_cnt=10, max_job_cnt=1)
@@ -80,16 +79,16 @@ def process_command(command):
 #                 for q_dist in q_dists:
 #                     for seed in seeds:
 #                         command = f"python -um scripts.train_classifier_double_descent -c {arch_config} -d {device} -e {n_epochs} " \
-#                             f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A --label_noise_type {label_noise_type} -m {method} " \
+#                             f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A -m {method} " \
 #                             f"--seed {seed} -k {k} --q_dist {q_dist} -L {L} " \
-#                             f"-l double_descent_logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-{q_dist}-L{L}-k{k}-seed{seed}"
+#                             f"-l double_descent_logs/{dataset}-noise{n}-augment-{method}-{q_dist}-L{L}-k{k}-seed{seed}"
 #                         commands += process_command(command)
 #
 # merge_commands(commands, gpu_cnt=10, max_job_cnt=1)
 
 
 ########################################################################################################################
-######################                            CIFAR10-error                                   ######################
+######################                       uniform-noise-cifar100                               ######################
 ########################################################################################################################
 ns = [0.0]
 ks = [2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 16, 18, 20]
@@ -98,8 +97,7 @@ device = 'cuda'
 n_epochs = 4000
 save_iter = 400
 vis_iter = 400
-label_noise_type = "error"
-dataset = "cifar100"
+dataset = "uniform-noise-cifar100"
 arch_config = 'configs/double-descent-cifar100-resnet18.json'
 
 
@@ -111,9 +109,9 @@ arch_config = 'configs/double-descent-cifar100-resnet18.json'
 #     for k in ks:
 #         for seed in seeds:
 #             command = f"python -um scripts.train_classifier_double_descent -c {arch_config} -d {device} -e {n_epochs} " \
-#                 f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A --label_noise_type {label_noise_type} -m {method} " \
+#                 f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A -m {method} " \
 #                 f"--seed {seed} -k {k} " \
-#                 f"-l double_descent_logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-k{k}-seed{seed}"
+#                 f"-l double_descent_logs/{dataset}-noise{n}-augment-{method}-k{k}-seed{seed}"
 #             commands += process_command(command)
 #
 # merge_commands(commands, gpu_cnt=100, max_job_cnt=1)
@@ -124,9 +122,9 @@ arch_config = 'configs/double-descent-cifar100-resnet18.json'
 # for n in ns:
 #     for seed in seeds:
 #         command = f"python -um scripts.train_classifier_double_descent -c configs/double-resnet-cifar100.json -d {device} -e {n_epochs} " \
-#                   f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A --label_noise_type {label_noise_type} -m {method} " \
+#                   f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A -m {method} " \
 #                   f"--seed {seed} " \
-#                   f"-l double_descent_logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-resnet34-seed{seed}"
+#                   f"-l double_descent_logs/{dataset}-noise{n}-augment-{method}-resnet34-seed{seed}"
 #         commands += process_command(command)
 # merge_commands(commands, gpu_cnt=100, max_job_cnt=1)
 
@@ -142,9 +140,9 @@ arch_config = 'configs/double-descent-cifar100-resnet18.json'
 #         for q_dist in q_dists:
 #             for seed in seeds:
 #                 command = f"python -um scripts.train_classifier_double_descent -c configs/double-resnet-cifar100.json -d {device} -e {n_epochs} " \
-#                     f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A --label_noise_type {label_noise_type} -m {method} " \
+#                     f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A -m {method} " \
 #                     f"--seed {seed} --q_dist {q_dist} -L {L} " \
-#                     f"-l double_descent_logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-resnet34-{q_dist}-L{L}-seed{seed}"
+#                     f"-l double_descent_logs/{dataset}-noise{n}-augment-{method}-resnet34-{q_dist}-L{L}-seed{seed}"
 #                 commands += process_command(command)
 #
 # merge_commands(commands, gpu_cnt=10, max_job_cnt=1)
@@ -159,9 +157,9 @@ for n in ns:
     for k in ks:
         for seed in seeds:
             command = f"python -um scripts.train_classifier_double_descent -c {arch_config} -d {device} -e {n_epochs} " \
-                f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A --label_noise_type {label_noise_type} -m {method} " \
+                f"-s {save_iter} -v {vis_iter} -D {dataset} -n {n} -A -m {method} " \
                 f"--seed {seed} -k {k} --exclude_percent {exclude_percent} " \
-                f"-l double_descent_logs/{dataset}-{label_noise_type}-noise{n}-exclude{exclude_percent}-augment-{method}-k{k}-seed{seed}"
+                f"-l double_descent_logs/{dataset}-noise{n}-exclude{exclude_percent}-augment-{method}-k{k}-seed{seed}"
             commands += process_command(command)
 
 merge_commands(commands, gpu_cnt=100, max_job_cnt=1)

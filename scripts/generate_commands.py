@@ -38,7 +38,7 @@ def process_command(command):
 
 
 ########################################################################################################################
-########################                            MNIST-error                                   ######################
+########################                    uniform-noise-mnist                                   ######################
 ########################################################################################################################
 ns = [0.0, 0.5, 0.8, 0.89]
 seeds = range(42, 47)
@@ -48,8 +48,7 @@ n_epochs = 400
 save_iter = 10000
 vis_iter = 50
 stopping_param = 100
-label_noise_type = "error"
-dataset = "mnist"
+dataset = "uniform-noise-mnist"
 
 
 """ Standard Classsifier """
@@ -80,7 +79,7 @@ dataset = "mnist"
 #                         num_train_examples_name_string = ""
 #                         num_train_examples_run_string = ""
 #
-#                     command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} --label_noise_type {label_noise_type} -m {method} {noisy_grad_run_string} --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-{label_noise_type}-noise{n}-{method}{noisy_grad_name_string}-seed{seed}"
+#                     command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} -m {method} {noisy_grad_run_string} --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-noise{n}-{method}{noisy_grad_name_string}-seed{seed}"
 #                     commands += process_command(command)
 #
 # # Mean absolute error
@@ -95,7 +94,7 @@ dataset = "mnist"
 #                 num_train_examples_name_string = ""
 #                 num_train_examples_run_string = ""
 #
-#             command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} --label_noise_type {label_noise_type} -m {method} --loss_function mae --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-{label_noise_type}-noise{n}-{method}-mae-seed{seed}"
+#             command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} -m {method} --loss_function mae --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-noise{n}-{method}-mae-seed{seed}"
 #             commands += process_command(command)
 #
 # merge_commands(commands, gpu_cnt=10)
@@ -116,18 +115,17 @@ dataset = "mnist"
 #                 num_train_examples_name_string = ""
 #                 num_train_examples_run_string = ""
 #
-#             load_from = f"logs/{dataset}{num_train_examples_name_string}-{label_noise_type}-noise{n}-{method}-seed{seed}/checkpoints/best_val.mdl"
-#             command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} --label_noise_type {label_noise_type} -m {method} --loss_function fw --load_from {load_from} --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-{label_noise_type}-noise{n}-{method}-fw-seed{seed}"
+#             load_from = f"logs/{dataset}{num_train_examples_name_string}-noise{n}-{method}-seed{seed}/checkpoints/best_val.mdl"
+#             command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} -m {method} --loss_function fw --load_from {load_from} --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-noise{n}-{method}-fw-seed{seed}"
 #             commands += process_command(command)
-#
-# # merge_commands(commands, gpu_cnt=10)
+# merge_commands(commands, gpu_cnt=10)
 
 
 """ DMI """
 # method = "StandardClassifier"
 # lrs = [1e-3, 1e-4, 1e-5, 1e-6]
 #
-# # commands = []
+# commands = []
 # for n in ns:
 #     for num_train_examples in n_samples_grid:
 #         for lr in lrs:
@@ -140,8 +138,8 @@ dataset = "mnist"
 #                     num_train_examples_name_string = ""
 #                     num_train_examples_run_string = ""
 #
-#                 load_from = f"logs/{dataset}{num_train_examples_name_string}-{label_noise_type}-noise{n}-{method}-seed{seed}/checkpoints/best_val.mdl"
-#                 command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} --label_noise_type {label_noise_type} -m {method} --loss_function dmi --lr {lr} --load_from {load_from} --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-{label_noise_type}-noise{n}-{method}-dmi-lr{lr}-seed{seed}"
+#                 load_from = f"logs/{dataset}{num_train_examples_name_string}-noise{n}-{method}-seed{seed}/checkpoints/best_val.mdl"
+#                 command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} -m {method} --loss_function dmi --lr {lr} --load_from {load_from} --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-noise{n}-{method}-dmi-lr{lr}-seed{seed}"
 #                 commands += process_command(command)
 #
 # merge_commands(commands, gpu_cnt=10)
@@ -167,7 +165,7 @@ dataset = "mnist"
 #                         num_train_examples_name_string = ""
 #                         num_train_examples_run_string = ""
 #
-#                     command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} --label_noise_type {label_noise_type} -m {method} --q_dist {q_dist} -L {L} --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-{label_noise_type}-noise{n}-{method}-{q_dist}-L{L}-seed{seed}"
+#                     command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} -m {method} --q_dist {q_dist} -L {L} --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-noise{n}-{method}-{q_dist}-L{L}-seed{seed}"
 #                     commands += process_command(command)
 #
 # merge_commands(commands)
@@ -198,7 +196,7 @@ dataset = "mnist"
 #                             num_train_examples_name_string = ""
 #                             num_train_examples_run_string = ""
 #
-#                         command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} --label_noise_type {label_noise_type} -m {method} --q_dist {q_dist} --lamb {lamb} -L {L} --sample_from_q --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-{label_noise_type}-noise{n}-{method}-{q_dist}-lamb{lamb}-L{L}-sample-seed{seed}"
+#                         command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} -m {method} --q_dist {q_dist} --lamb {lamb} -L {L} --sample_from_q --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-noise{n}-{method}-{q_dist}-lamb{lamb}-L{L}-sample-seed{seed}"
 #                         commands += process_command(command)
 #
 # merge_commands(commands, gpu_cnt=10, max_job_cnt=120)
@@ -224,17 +222,14 @@ dataset = "mnist"
 #                         num_train_examples_name_string = ""
 #                         num_train_examples_run_string = ""
 #
-#                     command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} --label_noise_type {label_noise_type} -m {method} --lamb {lamb} -L {L} --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-{label_noise_type}-noise{n}-{method}-lamb{lamb}-L{L}-seed{seed}"
+#                     command = f"python -um scripts.train_classifier -c configs/4layer-cnn-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} {num_train_examples_run_string} -m {method} --lamb {lamb} -L {L} --seed {seed} -l logs/{dataset}{num_train_examples_name_string}-noise{n}-{method}-lamb{lamb}-L{L}-seed{seed}"
 #                     commands += process_command(command)
 #
 # merge_commands(commands)
 
 
-
-
-
 ########################################################################################################################
-######################                            CIFAR10-error                                   ######################
+######################                        uniform-noise-cifar10                               ######################
 ########################################################################################################################
 ns = [0.2, 0.4, 0.6, 0.8]
 seeds = range(42, 43)
@@ -243,8 +238,7 @@ n_epochs = 400
 save_iter = 10000
 vis_iter = 50
 stopping_param = 100
-label_noise_type = "error"
-dataset = "cifar10"
+dataset = "uniform-noise-cifar10"
 
 """ Standard Classsifier """
 # method = "StandardClassifier"
@@ -252,13 +246,13 @@ dataset = "cifar10"
 # commands = []
 # for n in ns:
 #     for seed in seeds:
-#         command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} --label_noise_type {label_noise_type} -m {method} --seed {seed} -l logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-seed{seed}"
+#         command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} -m {method} --seed {seed} -l logs/{dataset}-noise{n}-augment-{method}-seed{seed}"
 #         commands += process_command(command)
 #
 # # Mean absolute error
 # for n in ns:
 #     for seed in seeds:
-#         command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} --label_noise_type {label_noise_type} -m {method} --loss_function mae --seed {seed} -l logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-mae-seed{seed}"
+#         command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} -m {method} --loss_function mae --seed {seed} -l logs/{dataset}-noise{n}-augment-{method}-mae-seed{seed}"
 #         commands += process_command(command)
 #
 # # merge_commands(commands, gpu_cnt=10)
@@ -276,7 +270,7 @@ dataset = "cifar10"
 #     for L in Ls:
 #         for q_dist in q_dists:
 #             for seed in seeds:
-#                 command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} --label_noise_type {label_noise_type} -m {method} --q_dist {q_dist} -L {L} --seed {seed} -l logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-{q_dist}-L{L}-seed{seed}"
+#                 command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} -m {method} --q_dist {q_dist} -L {L} --seed {seed} -l logs/{dataset}-noise{n}-augment-{method}-{q_dist}-L{L}-seed{seed}"
 #                 commands += process_command(command)
 #
 # merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
@@ -289,8 +283,8 @@ dataset = "cifar10"
 # commands = []
 # for n in ns:
 #     for seed in seeds:
-#         load_from = f"logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-seed{seed}/checkpoints/best_val.mdl"
-#         command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} --label_noise_type {label_noise_type} -m {method} --loss_function fw --load_from {load_from} --seed {seed} -l logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-fw-seed{seed}"
+#         load_from = f"logs/{dataset}-noise{n}-augment-{method}-seed{seed}/checkpoints/best_val.mdl"
+#         command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} -m {method} --loss_function fw --load_from {load_from} --seed {seed} -l logs/{dataset}-noise{n}-augment-{method}-fw-seed{seed}"
 #         commands += process_command(command)
 #
 # # merge_commands(commands, gpu_cnt=10)
@@ -304,8 +298,8 @@ dataset = "cifar10"
 # for n in ns:
 #     for lr in lrs:
 #         for seed in seeds:
-#             load_from = f"logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-seed{seed}/checkpoints/best_val.mdl"
-#             command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} --label_noise_type {label_noise_type} -m {method} --loss_function dmi --lr {lr} --load_from {load_from} --seed {seed} -l logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-dmi-lr{lr}-seed{seed}"
+#             load_from = f"logs/{dataset}-noise{n}-augment-{method}-seed{seed}/checkpoints/best_val.mdl"
+#             command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} -m {method} --loss_function dmi --lr {lr} --load_from {load_from} --seed {seed} -l logs/{dataset}-noise{n}-augment-{method}-dmi-lr{lr}-seed{seed}"
 #             commands += process_command(command)
 #
 # merge_commands(commands, gpu_cnt=10)
@@ -322,29 +316,30 @@ dataset = "cifar10"
 #     for L in Ls:
 #         for q_dist in q_dists:
 #             for seed in seeds:
-#                 load_from = f"logs/{dataset}-{label_noise_type}-noise{n}-augment-StandardClassifier-seed{seed}/checkpoints/best_val.mdl"
-#                 command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} --label_noise_type {label_noise_type} -m {method} --q_dist {q_dist} -L {L} --load_from {load_from} --seed {seed} -l logs/{dataset}-{label_noise_type}-noise{n}-augment-{method}-{q_dist}-L{L}-loaded-seed{seed}"
+#                 load_from = f"logs/{dataset}-noise{n}-augment-StandardClassifier-seed{seed}/checkpoints/best_val.mdl"
+#                 command = f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -A -n {n} -m {method} --q_dist {q_dist} -L {L} --load_from {load_from} --seed {seed} -l logs/{dataset}-noise{n}-augment-{method}-{q_dist}-L{L}-loaded-seed{seed}"
 #                 commands += process_command(command)
 #
 # merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
 
 
 
-# ########################################################################################################################
-# ######################                               CIFAR10-custom                                 ######################
-# ########################################################################################################################
+########################################################################################################################
+######################                         pair-noise-cifar10                                 ######################
+########################################################################################################################
+dataset = 'pair-noise-cifar10'
 
 """ Standard """
 # method = "StandardClassifier"
 # seeds = range(42, 43)
 # ns = [0.0, 0.1, 0.2, 0.3, 0.4]
 # device = 'cuda'
-#
+
 # commands = []
 # for n in ns:
 #     for seed in seeds:
-#         commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 50 -v 50 -D cifar10 -n {n} --label_noise_type cifar10_custom -m {method} --seed {seed} -A -l logs/cifar10-custom-noise{n}-{method}-augment-seed{seed}")
-#         commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 50 -v 50 -D cifar10 -n {n} --label_noise_type cifar10_custom -m {method} --seed {seed} --loss_function mae -A -l logs/cifar10-custom-noise{n}-{method}-mae-augment-seed{seed}")
+#         commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 50 -v 50 -D {dataset} -n {n} -m {method} --seed {seed} -A -l logs/{dataset}-noise{n}-{method}-augment-seed{seed}")
+#         commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 50 -v 50 -D {dataset} -n {n} -m {method} --seed {seed} --loss_function mae -A -l logs/{dataset}-noise{n}-{method}-mae-augment-seed{seed}")
 #
 # merge_commands(commands)
 
@@ -352,8 +347,7 @@ dataset = "cifar10"
 """ DMI """
 # method = "StandardClassifier"
 # seeds = range(42, 43)  # range(42, 47)
-# # ns = [0.1, 0.2, 0.3, 0.4]
-# ns = [0.0]
+# ns = [0.0, 0.1, 0.2, 0.3, 0.4]
 # lrs = [1e-3, 1e-4, 1e-5, 1e-6]
 # device = 'cuda'
 #
@@ -361,7 +355,7 @@ dataset = "cifar10"
 # for n in ns:
 #     for lr in lrs:
 #         for seed in seeds:
-#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 50 -v 50 -D cifar10 -n {n} --label_noise_type cifar10_custom -m {method} --loss_function dmi --lr {lr} --stopping_param 100 --seed {seed} -A --load_from logs/cifar10-custom-noise{n}-{method}-augment-seed{seed}/checkpoints/best_val.mdl -l logs/cifar10-custom-noise{n}-{method}-dmi-lr{lr}-augment-seed{seed}")
+#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 50 -v 50 -D {dataset} -n {n} -m {method} --loss_function dmi --lr {lr} --stopping_param 100 --seed {seed} -A --load_from logs/{dataset}-noise{n}-{method}-augment-seed{seed}/checkpoints/best_val.mdl -l logs/{dataset}-noise{n}-{method}-dmi-lr{lr}-augment-seed{seed}")
 #
 # merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
 
@@ -369,14 +363,13 @@ dataset = "cifar10"
 """ FW """
 # method = "StandardClassifier"
 # seeds = range(42, 43)  # range(42, 47)
-# # ns = [0.1, 0.2, 0.3, 0.4]
-# ns = [0.0]
+# ns = [0.0, 0.1, 0.2, 0.3, 0.4]
 # device = 'cuda'
 #
 # commands = []
 # for n in ns:
 #     for seed in seeds:
-#         commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 50 -v 50 -D cifar10 -n {n} --label_noise_type cifar10_custom -m {method} --loss_function fw --seed {seed} -A --load_from logs/cifar10-custom-noise{n}-{method}-augment-seed{seed}/checkpoints/best_val.mdl -l logs/cifar10-custom-noise{n}-{method}-fw-augment-seed{seed}")
+#         commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 50 -v 50 -D {dataset} -n {n} -m {method} --loss_function fw --seed {seed} -A --load_from logs/{dataset}-noise{n}-{method}-augment-seed{seed}/checkpoints/best_val.mdl -l logs/{dataset}-noise{n}-{method}-fw-augment-seed{seed}")
 #
 # merge_commands(commands)
 
@@ -392,9 +385,9 @@ dataset = "cifar10"
 # for n in ns:
 #     for L in Ls:
 #         for seed in seeds:
-#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 --stopping_param 100 -s 50 -v 50 -D cifar10 -n {n} --label_noise_type cifar10_custom -m {method} --q_dist Laplace -L {L} --seed {seed} -A -l logs/cifar10-custom-noise{n}-{method}-Laplace-L{L}-augment-seed{seed}")
-#
-# # merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
+#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 --stopping_param 100 -s 50 -v 50 -D {dataset} -n {n} -m {method} --q_dist Laplace -L {L} --seed {seed} -A -l logs/{dataset}-noise{n}-{method}-Laplace-L{L}-augment-seed{seed}")
+
+# merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
 
 """ Predict Gaussian """
 # method = "PredictGradOutput"
@@ -403,13 +396,13 @@ dataset = "cifar10"
 # ns = [0.0, 0.1, 0.2, 0.3, 0.4]
 # device = 'cuda'
 #
-# # commands = []
+# commands = []
 # for n in ns:
 #     for L in Ls:
 #         for seed in seeds:
-#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 50 -v 50 -D cifar10 -n {n} --label_noise_type cifar10_custom -m {method} --q_dist Gaussian -L {L} --seed {seed} --stopping_param 100 -A -l logs/cifar10-custom-noise{n}-{method}-Gaussian-L{L}-augment-seed{seed}")
-#
-# # merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
+#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 50 -v 50 -D {dataset} -n {n} -m {method} --q_dist Gaussian -L {L} --seed {seed} --stopping_param 100 -A -l logs/{dataset}-noise{n}-{method}-Gaussian-L{L}-augment-seed{seed}")
+
+# merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
 
 
 """ Predict Laplace [loaded, larger stopping param] """
@@ -419,13 +412,13 @@ dataset = "cifar10"
 # ns = [0.0, 0.1, 0.2, 0.3, 0.4]
 # device = 'cuda'
 #
-# # commands = []
+# commands = []
 # for n in ns:
 #     for L in Ls:
 #         for seed in seeds:
-#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 50 -v 50 -D cifar10 -n {n} --label_noise_type cifar10_custom -m {method} --q_dist Laplace -L {L} --seed {seed} -A -l logs/cifar10-custom-noise{n}-{method}-Laplace-L{L}-augment-loaded-seed{seed} --stopping_param 200 --load_from logs/cifar10-custom-noise{n}-StandardClassifier-augment-seed{seed}/checkpoints/best_val.mdl")
+#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 50 -v 50 -D {dataset} -n {n} -m {method} --q_dist Laplace -L {L} --seed {seed} -A -l logs/{dataset}-noise{n}-{method}-Laplace-L{L}-augment-loaded-seed{seed} --stopping_param 200 --load_from logs/{dataset}-noise{n}-StandardClassifier-augment-seed{seed}/checkpoints/best_val.mdl")
 #
-# # merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
+# merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
 
 
 """ Predict Gaussian [loaded] """
@@ -435,19 +428,21 @@ dataset = "cifar10"
 # ns = [0.0, 0.1, 0.2, 0.3, 0.4]
 # device = 'cuda'
 #
-# # commands = []
+# commands = []
 # for n in ns:
 #     for L in Ls:
 #         for seed in seeds:
-#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 200 -v 50 -D cifar10 -n {n} --label_noise_type cifar10_custom -m {method} --q_dist Gaussian -L {L} --seed {seed} --stopping_param 200 -A -l logs/cifar10-custom-noise{n}-{method}-Gaussian-L{L}-augment-loaded-seed{seed} --load_from logs/cifar10-custom-noise{n}-StandardClassifier-augment-seed{seed}/checkpoints/best_val.mdl")
+#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar10.json -d cuda -e 400 -s 200 -v 50 -D {datasets} -n {n} -m {method} --q_dist Gaussian -L {L} --seed {seed} --stopping_param 200 -A -l logs/{dataset}-noise{n}-{method}-Gaussian-L{L}-augment-loaded-seed{seed} --load_from logs/{dataset}-noise{n}-StandardClassifier-augment-seed{seed}/checkpoints/best_val.mdl")
 #
 # merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
 
 
 
 ########################################################################################################################
-######################                                  CIFAR-100                                  #####################
+######################                     uniform-noise-cifar100                                  #####################
 ########################################################################################################################
+dataset = 'uniform-noise-cifar100'
+
 # """ Standard """
 # method = "StandardClassifier"
 # seeds = range(42, 43)
@@ -457,8 +452,8 @@ dataset = "cifar10"
 # commands = []
 # for n in ns:
 #     for seed in seeds:
-#         commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 --stopping_param 100 -s 50 -v 50 -D cifar100 --label_noise_type error -n {n} -m {method} --seed {seed} -A -l logs/cifar100-error-noise{n}-{method}-augment-seed{seed}")
-#         commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 --stopping_param 100 -s 50 -v 50 -D  --label_noise_type error -n {n} -m {method} --seed {seed} --loss_function mae -A -l logs/cifar100-error-noise{n}-{method}-mae-augment-seed{seed}")
+#         commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 --stopping_param 100 -s 50 -v 50 -D {dataset} -n {n} -m {method} --seed {seed} -A -l logs/{dataset}-noise{n}-{method}-augment-seed{seed}")
+#         commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 --stopping_param 100 -s 50 -v 50 -D {dataset} -n {n} -m {method} --seed {seed} --loss_function mae -A -l logs/{dataset}-noise{n}-{method}-mae-augment-seed{seed}")
 #
 # merge_commands(commands)
 
@@ -474,7 +469,7 @@ dataset = "cifar10"
 # for n in ns:
 #     for lr in lrs:
 #         for seed in seeds:
-#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 --stopping_param 100 -s 50 -v 50 -D cifar100 --label_noise_type error -n {n} -m {method} --loss_function dmi --lr {lr} --seed {seed} -A -l logs/cifar100-error-noise{n}-{method}-dmi-lr{lr}-augment-seed{seed} --load_from logs/cifar100-error-noise{n}-{method}-augment-seed{seed}/checkpoints/best_val.mdl")
+#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 --stopping_param 100 -s 50 -v 50 -D {dataset} -n {n} -m {method} --loss_function dmi --lr {lr} --seed {seed} -A -l logs/{dataset}-noise{n}-{method}-dmi-lr{lr}-augment-seed{seed} --load_from logs/{dataset}-noise{n}-{method}-augment-seed{seed}/checkpoints/best_val.mdl")
 #
 # merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
 
@@ -488,7 +483,7 @@ dataset = "cifar10"
 # commands = []
 # for n in ns:
 #     for seed in seeds:
-#         commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 --stopping_param 100 -s 50 -v 50 -D cifar100 --label_noise_type error -n {n} -m {method} --loss_function fw --seed {seed} -A -l logs/cifar100-error-noise{n}-{method}-fw-augment-seed{seed} --load_from logs/cifar100-error-noise{n}-{method}-augment-seed{seed}/checkpoints/best_val.mdl")
+#         commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 --stopping_param 100 -s 50 -v 50 -D {dataset} -n {n} -m {method} --loss_function fw --seed {seed} -A -l logs/{dataset}-noise{n}-{method}-fw-augment-seed{seed} --load_from logs/{dataset}-noise{n}-{method}-augment-seed{seed}/checkpoints/best_val.mdl")
 #
 # merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
 
@@ -504,7 +499,7 @@ dataset = "cifar10"
 # for n in ns:
 #     for L in Ls:
 #         for seed in seeds:
-#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 -s 50 -v 50 -D cifar100 --label_noise_type error -n {n} -m {method} --q_dist Laplace -L {L} --seed {seed} -A -l logs/cifar100-error-noise{n}-{method}-Laplace-L{L}-augment-loaded-seed{seed} --stopping_param 200 --load_from logs/cifar100-error-noise{n}-StandardClassifier-augment-seed{seed}/checkpoints/best_val.mdl")
+#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 -s 50 -v 50 -D {dataset} -n {n} -m {method} --q_dist Laplace -L {L} --seed {seed} -A -l logs/{dataset}-noise{n}-{method}-Laplace-L{L}-augment-loaded-seed{seed} --stopping_param 200 --load_from logs/{dataset}-noise{n}-StandardClassifier-augment-seed{seed}/checkpoints/best_val.mdl")
 #
 # merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
 
@@ -520,7 +515,7 @@ dataset = "cifar10"
 # for n in ns:
 #     for L in Ls:
 #         for seed in seeds:
-#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 -s 500 -v 50 -D cifar100 --label_noise_type error -n {n} -m {method} --q_dist Gaussian -L {L} --seed {seed} -A -l logs/cifar100-error-noise{n}-{method}-Gaussian-L{L}-augment-loaded-seed{seed} --stopping_param 200 --load_from logs/cifar100-error-noise{n}-StandardClassifier-augment-seed{seed}/checkpoints/best_val.mdl")
+#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 -s 500 -v 50 -D {dataset} -n {n} -m {method} --q_dist Gaussian -L {L} --seed {seed} -A -l logs/{dataset}-noise{n}-{method}-Gaussian-L{L}-augment-loaded-seed{seed} --stopping_param 200 --load_from logs/{dataset}-noise{n}-StandardClassifier-augment-seed{seed}/checkpoints/best_val.mdl")
 #
 # merge_commands(commands, gpu_cnt=3, max_job_cnt=2000, put_device_id=True)
 
@@ -535,7 +530,7 @@ dataset = "cifar10"
 # for n in ns:
 #     for L in Ls:
 #         for seed in seeds:
-#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 -s 50 -v 50 -D cifar100 --label_noise_type error -n {n} -m {method} --q_dist Laplace -L {L} --seed {seed} -A -l logs/cifar100-error-noise{n}-{method}-Laplace-L{L}-augment-seed{seed} --stopping_param 200")
+#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 -s 50 -v 50 -D {dataset} -n {n} -m {method} --q_dist Laplace -L {L} --seed {seed} -A -l logs/{dataset}-noise{n}-{method}-Laplace-L{L}-augment-seed{seed} --stopping_param 200")
 #
 # # merge_commands(commands, gpu_cnt=10, max_job_cnt=2)
 
@@ -551,7 +546,7 @@ dataset = "cifar10"
 # for n in ns:
 #     for L in Ls:
 #         for seed in seeds:
-#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 -s 500 -v 50 -D cifar100 --label_noise_type error -n {n} -m {method} --q_dist Gaussian -L {L} --seed {seed} -A -l logs/cifar100-error-noise{n}-{method}-Gaussian-L{L}-augment-seed{seed} --stopping_param 200")
+#             commands += process_command(f"python -um scripts.train_classifier -c configs/double-resnet-cifar100.json -d cuda -e 400 -s 500 -v 50 -D {dataset} -n {n} -m {method} --q_dist Gaussian -L {L} --seed {seed} -A -l logs/{dataset}-noise{n}-{method}-Gaussian-L{L}-augment-seed{seed} --stopping_param 200")
 #
 # merge_commands(commands, gpu_cnt=3, max_job_cnt=2000, put_device_id=True)
 
@@ -570,14 +565,13 @@ n_epochs = 400
 save_iter = 10000
 vis_iter = 50
 stopping_param = n_epochs + 1
-label_noise_type = "error"
-dataset = "mnist"
+dataset = "uniform-noise-mnist"
 
 """ no regularization """
 commands = []
 for n in ns:
     for seed in seeds:
-        command = f"python -um scripts.train_classifier -c configs/4layer-mlp-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} --label_noise_type {label_noise_type} -m {method} --seed {seed} --clean_validation -l logs/prevent_overfitting_4layer/{dataset}-{label_noise_type}-noise{n}-{method}-seed{seed}"
+        command = f"python -um scripts.train_classifier -c configs/4layer-mlp-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} -m {method} --seed {seed} --clean_validation -l logs/prevent_overfitting_4layer/{dataset}-noise{n}-{method}-seed{seed}"
         commands += process_command(command)
 # merge_commands(commands, gpu_cnt=3, put_device_id=True)
 
@@ -588,7 +582,7 @@ dropout_rates = [0.25, 0.5, 0.75]
 for n in ns:
     for dropout_rate in dropout_rates:
         for seed in seeds:
-            command = f"python -um scripts.train_classifier -c configs/4layer-mlp-mnist-dropout{dropout_rate}.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} --label_noise_type {label_noise_type} -m {method} --seed {seed} --clean_validation -l logs/prevent_overfitting_4layer/{dataset}-{label_noise_type}-noise{n}-{method}-dropout{dropout_rate}-seed{seed}"
+            command = f"python -um scripts.train_classifier -c configs/4layer-mlp-mnist-dropout{dropout_rate}.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} -m {method} --seed {seed} --clean_validation -l logs/prevent_overfitting_4layer/{dataset}-noise{n}-{method}-dropout{dropout_rate}-seed{seed}"
             commands += process_command(command)
 # merge_commands(commands, gpu_cnt=3, put_device_id=True)
 
@@ -599,7 +593,7 @@ weight_decay_rates = [0.001, 0.003, 0.0001]
 for n in ns:
     for weight_decay in weight_decay_rates:
         for seed in seeds:
-            command = f"python -um scripts.train_classifier -c configs/4layer-mlp-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} --label_noise_type {label_noise_type} -m {method} --weight_decay {weight_decay} --seed {seed} --clean_validation -l logs/prevent_overfitting_4layer/{dataset}-{label_noise_type}-noise{n}-{method}-weight_decay{weight_decay}-seed{seed}"
+            command = f"python -um scripts.train_classifier -c configs/4layer-mlp-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} -m {method} --weight_decay {weight_decay} --seed {seed} --clean_validation -l logs/prevent_overfitting_4layer/{dataset}-noise{n}-{method}-weight_decay{weight_decay}-seed{seed}"
             commands += process_command(command)
 # merge_commands(commands, gpu_cnt=3, put_device_id=True)
 
@@ -611,6 +605,6 @@ Ls = [1.0, 3.0, 10.0, 30.0, 100.0]
 for n in ns:
     for L in Ls:
         for seed in seeds:
-            command = f"python -um scripts.train_classifier -c configs/4layer-mlp-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} --label_noise_type {label_noise_type} -m {method} --q_dist Laplace --grad_weight_decay {L} --seed {seed} --clean_validation -l logs/prevent_overfitting_4layer/{dataset}-{label_noise_type}-noise{n}-{method}-Laplace-L{L}-seed{seed}"
+            command = f"python -um scripts.train_classifier -c configs/4layer-mlp-mnist.json -d {device} -e {n_epochs} -s {save_iter} -v {vis_iter} --stopping_param {stopping_param} -D {dataset} -n {n} -m {method} --q_dist Laplace --grad_weight_decay {L} --seed {seed} --clean_validation -l logs/prevent_overfitting_4layer/{dataset}-noise{n}-{method}-Laplace-L{L}-seed{seed}"
             commands += process_command(command)
 merge_commands(commands, gpu_cnt=3, put_device_id=True)
