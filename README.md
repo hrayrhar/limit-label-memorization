@@ -2,7 +2,7 @@
 The author implementation of LIMIT method described in the [paper](https://arxiv.org/abs/2002.07933) "Improving generalization by controlling label-noise information in neural network weights" by Hrayr Harutyunyan, Kyle Reing, Greg Ver Steeg, and Aram Galstyan.
 
 **If you goal is to reproduce the results**, please use the version of the code at time of ICML 2020 camera-ready submission.
-It can be found in the following [releease](https://github.com/hrayrhar/limit-label-memorization/releases/tag/v0.1). 
+It can be found in the following [release](https://github.com/hrayrhar/limit-label-memorization/releases/tag/v0.1).
 
 **If your goal is to use LIMIT**, you can use the this newer code. It is better commented and easier to use.
 The main method of the paper, LIMIT, is coded in the `LIMIT` class of the file `methods/limit.py`.
@@ -21,7 +21,7 @@ To cite the paper please use the following BibTeX:
 ## Requirements:
 * Basic data science libraries: `numpy`, `scipy`, `tqdm`, `matplotlib`, `seaborn`, `pandas`, `scikit-learn`.
 * We use `Pytorch 1.4.0`, but higher versions should work too.
-* Additionally, only for extracting data from tensorboard logs, `tensorflow >= 2.0` is needed.
+* Additionally, only for extracting data from Tensorboard logs, `tensorflow >= 2.0` is needed.
 
 The exact versions of libraries we used are listed in the `requirements.txt` file.
 
@@ -31,7 +31,7 @@ An example command would be:
 ```bash
 python -um scripts.train_classifier -d cuda -c configs/4layer-cnn-mnist.json --log_dir logs/mnist
 ```
-To monitor the training we run tensorboard:
+To monitor the training we run Tensorboard:
 ```bash
 tensorboard --logdir=/path/to/the/log/directory
 ```
@@ -48,3 +48,8 @@ tensorboard --logdir=/path/to/the/log/directory
 | data | Used to store data files.|
 | plots | Used to store the plots.|
 | nnlib | Points to a submodule which contains useful and generic code for training neural networks.| 
+
+### Reproducing the results
+As mentioned above, we recommend using the code of the [v0.1 release](https://github.com/hrayrhar/limit-label-memorization/releases/tag/v0.1) to reproduce the results of the paper.
+However, one should be able to reproduce the results with the current code too, although some unexpected errors might arise (they should be easy to fix). The commands we used to run the experiments
+were generated using the `scripts/generate_commands.py` script.
