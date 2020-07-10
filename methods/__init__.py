@@ -4,3 +4,4 @@ from methods.penalize import PenalizeLastLayerFixedForm
 from methods.predict import PredictGradOutput, PredictGradOutputFixedFormWithConfusion,\
     PredictGradOutputGeneralFormUseLabel
 from methods.vae import VAE
+from methods.limit import LIMIT
