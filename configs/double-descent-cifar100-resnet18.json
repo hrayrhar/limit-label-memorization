@@ -1,8 +1,0 @@
-{
-  "classifier": {
-    "net": "double-descent-cifar100-resnet18"
-  },
-  "q-network": {
-    "net": "double-descent-cifar100-resnet18"
-  }
-}
