@@ -17,18 +17,16 @@ def main():
     parser.add_argument('--seed', type=int, default=42)
 
     parser.add_argument('--dataset', '-D', type=str, default='mnist',
-                        choices=['mnist', 'cifar10', 'cifar100', 'clothing1m', 'imagenet'])
+                        choices=['mnist', 'uniform-noise-mnist',
+                                 'cifar10', 'uniform-noise-cifar10', 'pair-noise-cifar10',
+                                 'cifar100', 'uniform-noise-cifar100',
+                                 'clothing1m', 'imagenet'])
     parser.add_argument('--data_augmentation', '-A', action='store_true', dest='data_augmentation')
     parser.set_defaults(data_augmentation=False)
     parser.add_argument('--num_train_examples', type=int, default=None)
-    parser.add_argument('--label_noise_level', '-n', type=float, default=0.0)
-    parser.add_argument('--label_noise_type', type=str, default='flip',
-                        choices=['flip', 'error', 'cifar10_custom'])
-    parser.add_argument('--transform_function', type=str, default=None,
-                        choices=[None, 'remove_random_chunks'])
+    parser.add_argument('--error_prob', '-n', type=float, default=0.0)
     parser.add_argument('--clean_validation', dest='clean_validation', action='store_true')
     parser.set_defaults(clean_validation=False)
-    parser.add_argument('--remove_prob', type=float, default=0.5)
 
     parser.add_argument('--load_from', type=str, default=None, required=True)
     parser.add_argument('--output_dir', '-o', type=str, default=None)

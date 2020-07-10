@@ -26,19 +26,14 @@ def main():
     parser.add_argument('--log_dir', '-l', type=str, default=None)
     parser.add_argument('--seed', type=int, default=42)
 
-    parser.add_argument('--dataset', '-D', type=str, default='cifar10',
-                        choices=['mnist', 'cifar10', 'cifar100', 'clothing1m', 'imagenet'])
+    parser.add_argument('--dataset', '-D', type=str, default='uniform-noise-cifar10',
+                        choices=['uniform-noise-cifar10'])
     parser.add_argument('--data_augmentation', '-A', action='store_true', dest='data_augmentation')
     parser.set_defaults(data_augmentation=False)
     parser.add_argument('--num_train_examples', type=int, default=None)
-    parser.add_argument('--label_noise_level', '-n', type=float, default=0.0)
-    parser.add_argument('--label_noise_type', type=str, default='error',
-                        choices=['error', 'cifar10_custom'])
-    parser.add_argument('--transform_function', type=str, default=None,
-                        choices=[None, 'remove_random_chunks'])
+    parser.add_argument('--error_prob', '-n', type=float, default=0.0)
     parser.add_argument('--clean_validation', dest='clean_validation', action='store_true')
     parser.set_defaults(clean_validation=False)
-    parser.add_argument('--remove_prob', type=float, default=0.5)
 
     parser.add_argument('--model_class', '-m', type=str, default='StandardClassifier')
     parser.add_argument('--load_from', type=str, default=None)
@@ -54,7 +49,7 @@ def main():
 
     parser.add_argument('--k', '-k', type=int, required=False, default=10,
                         help='width parameter of ResNet18-k')
-    parser.add_argument('--exclude_percent', type=float, default=0.0)
+    parser.add_argument('--exclude_percent', type=float, default=0.0)  # TODO: make this argument work
     args = parser.parse_args()
     print(args)
 
