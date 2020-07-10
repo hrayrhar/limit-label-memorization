@@ -29,10 +29,9 @@ tensorboard --logdir=/path/to/the/log/directory
 ```
 
 The code at the time of ICML 2020 submission code be found [here](https://github.com/hrayrhar/limit-label-memorization/releases/tag/icml).
-The current version of the code should also produce the results of the paper.
-An updated and better commented code is available in [branch](https://github.com/hrayrhar/limit-label-memorization/tree/nnlib) named `nnlib`.
-Please use this code if you need to use LIMIT for new experiments, rather than replicating the paper results.
+This is the version of the code at the time of camera-ready submission. This version should be able to reproduce the results in the paper. 
 
-The main method of the paper called LIMIT is coded in `methods/predict.py` -- the `PredictGradOutput` class.
-The soft regularization approach described in the paper corresponds to the class `PenalizeLastLayerFixedForm` of `methods/penalize.py`.
-The training scripts are generated using the `scripts/generate_commands.py` script.
+**If you goal is to reproduce the results**, please use this version of the code. The main method of the paper called LIMIT is coded in `methods/predict.py` -- the `PredictGradOutput` class. The soft regularization approach described in the paper corresponds to the class `PenalizeLastLayerFixedForm` of `methods/penalize.py`. The training scripts are generated using the `scripts/generate_commands.py` script.
+
+
+**If your goal is to use LIMIT**, you can use the newer [code](https://github.com/hrayrhar/limit-label-memorization). It is better commented and easier to use code. The main method there to is the `LIMIT` class of the file `methods/limit.py`.
